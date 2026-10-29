@@ -1,0 +1,2301 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PedigreeFes</title>
+<meta name="description" content="Éditeur d'arbres généalogiques médicaux (nomenclature NSGC 2022) : glisser-déposer, menu contextuel, consanguinité et coefficient F.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%232f7a3e' stroke-width='2.2'%3E%3Crect x='3' y='4' width='9' height='9'/%3E%3Ccircle cx='24.5' cy='8.5' r='4.6'/%3E%3Cpath d='M12 8.5h7.9M16 8.5v10'/%3E%3C/g%3E%3Ccircle cx='16' cy='24' r='5' fill='%232f7a3e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #edf0e6; --surface: #fcfbf6; --surface-2: #f3f3ea; --border: #d7dbcc;
+  --text: #17201a; --muted: #55625a; --faint: #86918a;
+  --green: #2f7a3e; --on-green: #fff; --turq: #1d7f77; --orange: #b4572a; --danger: #b03a2e;
+  --paper: #fdfdfa; --menu-bg: #fffef9;
+  --shadow: 0 1px 2px rgba(23,32,26,.05), 0 10px 28px -14px rgba(38,58,34,.28);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b120e; --surface: #131c17; --surface-2: #18231d; --border: #25332a;
+    --text: #e5ece6; --muted: #9db0a4; --faint: #6c7e72;
+    --green: #62c983; --on-green: #0b120e; --turq: #4cc8ba; --orange: #ec8f5e; --danger: #ef7d6f;
+    --paper: #f1f1ea; --menu-bg: #17211b;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.75);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b120e; --surface: #131c17; --surface-2: #18231d; --border: #25332a;
+  --text: #e5ece6; --muted: #9db0a4; --faint: #6c7e72;
+  --green: #62c983; --on-green: #0b120e; --turq: #4cc8ba; --orange: #ec8f5e; --danger: #ef7d6f;
+  --paper: #f1f1ea; --menu-bg: #17211b;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.75);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 Manrope, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* top bar */
+.top { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; position: relative; z-index: 3; }
+.brand { display: flex; align-items: center; gap: 8px; font: 650 19px Fraunces, Georgia, serif; letter-spacing: -.01em; white-space: nowrap; }
+.brand svg { width: 24px; height: 24px; }
+#docTitle { flex: 1 1 200px; min-width: 120px; border: 1px solid transparent; background: transparent; font-weight: 600; font-size: 15px; padding: 6px 8px; border-radius: 8px; }
+#docTitle:hover, #docTitle:focus { border-color: var(--border); background: var(--surface-2); outline: none; }
+.tb { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.icon { width: 32px; padding: 0; justify-content: center; }
+.btn.primary { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.on { background: var(--turq); border-color: var(--turq); color: #fff; }
+.btn.danger { color: var(--danger); }
+.btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.btn.xs { width: 26px; height: 26px; font-size: 13px; }
+.chip { height: 28px; padding: 0 9px; font-size: 12px; }
+.vsep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+/* layout */
+.app { flex: 1; display: grid; grid-template-columns: 236px 1fr 340px; min-height: 0; }
+aside { background: var(--surface); overflow: auto; min-height: 0; }
+aside.left { border-right: 1px solid var(--border); padding: 4px 14px 20px; }
+aside.right { border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.stage { position: relative; min-width: 0; min-height: 0; background: var(--paper); overflow: hidden; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; cursor: default; }
+#cv.panning { cursor: grabbing; }
+#cv.picking, #cv.picking .pn { cursor: crosshair; }
+#cv .pn { cursor: move; }
+#cv [data-uid] { cursor: pointer; }
+#measure { position: absolute; width: 0; height: 0; visibility: hidden; }
+
+h3.sec { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+.palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pal { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); cursor: grab; font-size: 11px; font-weight: 600; color: var(--muted); user-select: none; }
+.pal:hover { border-color: var(--turq); color: var(--text); }
+.pal svg { width: 26px; height: 26px; }
+.pal svg rect, .pal svg circle, .pal svg polygon { fill: none; stroke: currentColor; }
+.pal svg line { stroke: currentColor; }
+.pal svg text { fill: currentColor; }
+.hint kbd { background: #f3f3ea; color: #17201a; border-color: #d7dbcc; }
+.ph { display: flex; align-items: center; gap: 5px; padding: 3px 0; }
+.ph .inp { height: 28px; }
+.ph .cnt { font: 500 11px 'JetBrains Mono', monospace; color: var(--faint); min-width: 14px; text-align: right; }
+input[type=color] { width: 26px; height: 26px; flex: none; border: 1px solid var(--border); border-radius: 6px; padding: 0; background: none; cursor: pointer; }
+input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
+input[type=color]::-webkit-color-swatch { border: none; border-radius: 4px; }
+.inp { width: 100%; min-width: 0; height: 30px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); font-size: 13px; font-weight: 500; padding: 0 8px; }
+textarea.inp { height: auto; padding: 6px 8px; resize: vertical; }
+.inp:focus { outline: 2px solid color-mix(in srgb, var(--turq) 40%, transparent); border-color: var(--turq); }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.small { font-size: 12px; } .muted { color: var(--muted); }
+.keys-mini { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; }
+kbd { font: 500 11px 'JetBrains Mono', monospace; background: var(--surface-2); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+
+/* right panel */
+.tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 8px; flex: none; }
+.tab { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; padding: 11px 4px 9px; font-weight: 700; font-size: 13px; color: var(--muted); cursor: pointer; }
+.tab.on { color: var(--text); border-color: var(--green); }
+#panel { padding: 6px 16px 40px; overflow: auto; flex: 1; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+.field > span { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.chk { display: flex; align-items: center; gap: 7px; font-size: 13px; margin: 5px 0; cursor: pointer; }
+.chk input { margin: 0; accent-color: var(--turq); }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { flex: 1; height: 30px; border: none; background: var(--surface-2); font-weight: 600; font-size: 13px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button.on { background: var(--turq); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.phead { display: flex; align-items: center; gap: 10px; margin: 12px 0 10px; }
+.phead svg { flex: none; }
+.pid { font: 650 20px Fraunces, Georgia, serif; }
+.affrow { margin-bottom: 4px; }
+.affrow .inp { margin: 2px 0 6px 22px; width: calc(100% - 22px); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); flex: none; }
+.card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface-2); margin-bottom: 12px; }
+.big { font: 650 30px Fraunces, Georgia, serif; letter-spacing: -.02em; line-height: 1.1; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+.kv b { font-weight: 700; }
+table.paths { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 8px; }
+table.paths th, table.paths td { text-align: left; padding: 4px 3px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.paths th { color: var(--muted); font-weight: 700; }
+.lnk { color: var(--turq); cursor: pointer; text-decoration: underline dotted; background: none; border: none; padding: 0; font-weight: 600; }
+.note { font-size: 12px; color: var(--muted); border-left: 3px solid var(--border); padding: 2px 0 2px 10px; margin: 10px 0; }
+ul.tips { padding-left: 18px; margin: 6px 0; font-size: 12.5px; color: var(--muted); }
+ul.tips li { margin: 3px 0; }
+
+/* context menu */
+#ctx { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+.menu { position: fixed; pointer-events: auto; min-width: 230px; max-width: 320px; background: var(--menu-bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 14px 36px -10px rgba(0,0,0,.38); padding: 5px; max-height: calc(100vh - 16px); overflow: auto; }
+.mi { display: flex; align-items: center; gap: 8px; width: 100%; border: none; background: none; font-size: 13px; font-weight: 500; padding: 6px 8px; border-radius: 6px; cursor: pointer; text-align: left; }
+.mi:hover, .mi.open { background: color-mix(in srgb, var(--turq) 15%, transparent); }
+.mi .ck { width: 16px; display: flex; justify-content: center; color: var(--turq); font-weight: 800; flex: none; }
+.mi .lb { flex: 1; }
+.mi .kb { font: 500 11px 'JetBrains Mono', monospace; color: var(--faint); }
+.mi .ar { color: var(--faint); }
+.mi.dis { opacity: .38; pointer-events: none; }
+.mi.danger { color: var(--danger); }
+.mhead { padding: 6px 8px 4px; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+/* stage overlays */
+.banner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: #17201a; color: #fff; padding: 7px 8px 7px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; display: none; z-index: 5; box-shadow: var(--shadow); align-items: center; gap: 10px; white-space: nowrap; }
+.banner.show { display: flex; }
+.banner button { background: rgba(255,255,255,.14); border: none; color: #fff; border-radius: 999px; padding: 3px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+.zoom { position: absolute; right: 12px; bottom: 42px; display: flex; flex-direction: column; gap: 4px; z-index: 2; }
+.zoom .btn { background: #fff; color: #17201a; border-color: #d7dbcc; }
+.status { position: absolute; left: 0; right: 0; bottom: 0; height: 28px; display: flex; align-items: center; gap: 16px; padding: 0 12px; font-size: 12px; color: #55625a; background: rgba(253,253,250,.92); border-top: 1px solid #e3e5da; z-index: 2; white-space: nowrap; overflow: hidden; }
+.status .grow { flex: 1; }
+.status b { color: #17201a; }
+.anon-badge { display: none; position: absolute; left: 12px; top: 12px; background: #b4572a; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 6px; z-index: 2; }
+.anon .anon-badge { display: block; }
+.hint { position: absolute; right: 12px; top: 12px; max-width: 300px; background: #fff; color: #17201a; border: 1px solid #d7dbcc; border-radius: 12px; padding: 12px 14px; font-size: 12.5px; box-shadow: 0 10px 28px -14px rgba(38,58,34,.35); z-index: 2; }
+.hint b { display: block; margin-bottom: 4px; font-size: 13px; }
+.hint button { position: absolute; top: 6px; right: 8px; border: none; background: none; cursor: pointer; font-size: 16px; color: #86918a; }
+.hint ul { margin: 0; padding-left: 16px; }
+.toast { position: fixed; bottom: 46px; left: 50%; transform: translate(-50%, 16px); opacity: 0; background: #17201a; color: #fff; padding: 9px 16px; border-radius: 10px; font-weight: 600; font-size: 13px; transition: .2s; z-index: 60; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* dialogs */
+dialog { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); padding: 0; width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 40px); box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(10,20,14,.45); }
+.dlg-h { padding: 18px 22px 0; font: 650 21px Fraunces, Georgia, serif; }
+.dlg-b { padding: 12px 22px; overflow: auto; }
+.dlg-f { padding: 10px 22px 18px; display: flex; justify-content: flex-end; gap: 8px; }
+.tpls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tpl { border: 1px solid var(--border); border-radius: 12px; padding: 10px; cursor: pointer; background: var(--surface-2); display: flex; flex-direction: column; gap: 4px; text-align: left; }
+.tpl.on { border-color: var(--turq); box-shadow: 0 0 0 2px color-mix(in srgb, var(--turq) 35%, transparent); }
+.tpl svg { width: 100%; height: 74px; background: #fdfdfa; border-radius: 8px; }
+.tpl b { font-size: 13px; }
+.tpl span { font-size: 11.5px; color: var(--muted); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 13px; align-items: center; }
+.help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.help-grid h4 { margin: 4px 0 8px; font-size: 13px; }
+.notation { display: grid; grid-template-columns: 40px 1fr; gap: 4px 10px; font-size: 12.5px; align-items: center; }
+.notation svg { width: 40px; height: 32px; background: #fdfdfa; border-radius: 6px; }
+
+#printArea { display: none; }
+@media print {
+  @page { margin: 10mm; }
+  html, body { height: auto; overflow: visible; display: block; background: #fff; }
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block; }
+  #printArea svg { width: 100%; height: auto; max-height: 270mm; }
+}
+
+.mob, .close-panel { display: none; }
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; }
+  aside.left, aside.right { position: fixed; top: 0; bottom: 0; z-index: 30; width: min(350px, 90vw); box-shadow: var(--shadow); transition: transform .2s; }
+  aside.left { left: 0; transform: translateX(-105%); }
+  aside.right { right: 0; transform: translateX(105%); }
+  aside.open { transform: none; }
+  .mob, .close-panel { display: inline-flex; }
+  .close-panel { position: absolute; top: 8px; right: 8px; z-index: 2; }
+  .hide-sm { display: none; }
+  .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="9" height="9"/><circle cx="24.5" cy="8.5" r="4.6"/><path d="M12 8.5h7.9M16 8.5v10"/></g><circle cx="16" cy="24" r="5" fill="#2f7a3e"/></svg>
+    <span>PedigreeFes</span>
+  </div>
+  <input id="docTitle" placeholder="Titre de l’arbre (ex. Famille B. — mucoviscidose)" aria-label="Titre de l’arbre">
+  <div class="tb">
+    <button class="btn mob" id="tglLeft" title="Symboles et phénotypes">☰</button>
+    <button class="btn" id="bNew" title="Nouvel arbre à partir d’un modèle">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm">Nouveau</span></button>
+    <button class="btn" id="bOpen" title="Ouvrir un fichier .json (Ctrl+O)">
+      <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="hide-sm">Ouvrir</span></button>
+    <button class="btn" id="bSave" title="Enregistrer en .json (Ctrl+S)">
+      <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="hide-sm">Enregistrer</span></button>
+    <button class="btn primary" id="bExport" title="PNG, SVG, impression / PDF">
+      <svg viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>Exporter</button>
+    <span class="vsep hide-sm"></span>
+    <button class="btn icon" id="bUndo" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button class="btn icon" id="bRedo" title="Rétablir (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    <span class="vsep hide-sm"></span>
+    <button class="btn" id="bLayout" title="Réorganiser proprement l’arbre (O)">
+      <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5"/><rect x="3" y="16" width="6" height="5"/><rect x="15" y="16" width="6" height="5"/><path d="M12 8v4M6 16v-4h12v4"/></svg><span class="hide-sm">Organiser</span></button>
+    <button class="btn" id="bAnon" title="Masquer noms, années de naissance et notes (affichage et export)">
+      <svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 20 20 4"/></svg><span class="hide-sm">Anonymiser</span></button>
+    <span class="vsep hide-sm"></span>
+    <button class="btn icon" id="bHelp" title="Aide et raccourcis (?)">?</button>
+    <button class="btn icon" id="bTheme" title="Thème clair / sombre"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+    <button class="btn mob" id="tglRight">Fiche</button>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="left" id="left">
+    <button class="btn icon close-panel" data-close="left" aria-label="Fermer">×</button>
+    <h3 class="sec">Symboles</h3>
+    <div class="palette" id="palette">
+      <div class="pal" draggable="true" data-pal="M" title="Homme"><svg viewBox="-24 -24 48 48"><rect x="-16" y="-16" width="32" height="32" fill="#fff" stroke="#1d1d1b" stroke-width="2.4"/></svg>Homme</div>
+      <div class="pal" draggable="true" data-pal="F" title="Femme"><svg viewBox="-24 -24 48 48"><circle r="16" fill="#fff" stroke="#1d1d1b" stroke-width="2.4"/></svg>Femme</div>
+      <div class="pal" draggable="true" data-pal="U" title="Sexe inconnu"><svg viewBox="-24 -24 48 48"><polygon points="0,-19 19,0 0,19 -19,0" fill="#fff" stroke="#1d1d1b" stroke-width="2.4"/></svg>Inconnu</div>
+      <div class="pal" draggable="true" data-pal="preg" title="Grossesse en cours"><svg viewBox="-24 -24 48 48"><polygon points="0,-19 19,0 0,19 -19,0" fill="#fff" stroke="#1d1d1b" stroke-width="2.4"/><text y="6" text-anchor="middle" font-family="Arial" font-weight="700" font-size="16" fill="#1d1d1b">P</text></svg>Grossesse</div>
+      <div class="pal" draggable="true" data-pal="sab" title="Fausse couche spontanée"><svg viewBox="-24 -24 48 48"><polygon points="0,-14 15,13 -15,13" fill="#fff" stroke="#1d1d1b" stroke-width="2.4"/></svg>FCS</div>
+      <div class="pal" draggable="true" data-pal="top" title="Interruption de grossesse"><svg viewBox="-24 -24 48 48"><polygon points="0,-14 15,13 -15,13" fill="#fff" stroke="#1d1d1b" stroke-width="2.4"/><line x1="-17" y1="18" x2="17" y2="-18" stroke="#1d1d1b" stroke-width="2.4"/></svg>IMG</div>
+    </div>
+    <p class="small muted" style="margin:6px 0 0">Glissez sur la feuille, ou cliquez pour ajouter au centre. Ensuite : <b>clic droit</b> sur un symbole.</p>
+
+    <h3 class="sec">Phénotypes · légende</h3>
+    <div id="phList"></div>
+    <button class="btn chip" id="addPh" style="margin-top:4px">+ Ajouter un phénotype</button>
+    <p class="small muted" style="margin:6px 0 0">Le bouton ✓ marque ou démarque les individus sélectionnés. Plusieurs phénotypes → symbole partagé en secteurs.</p>
+
+    <h3 class="sec">Affichage</h3>
+    <label class="chk"><input type="checkbox" id="optIds" checked> Numéros des individus (II-3)</label>
+    <label class="chk"><input type="checkbox" id="optGuides" checked> Repères de générations</label>
+
+    <h3 class="sec">Raccourcis (1 sélectionné)</h3>
+    <div class="keys-mini">
+      <kbd>P</kbd><span>parents</span><kbd>C</kbd><span>conjoint(e)</span>
+      <kbd>G</kbd> <span>fils</span><kbd>F</kbd><span>fille</span>
+      <kbd>R</kbd><span>frère</span><kbd>S</kbd><span>sœur</span>
+      <kbd>A</kbd><span>atteint (1er phénotype)</span><kbd>H</kbd><span>porteur hétérozygote</span>
+      <kbd>M</kbd><span>décédé(e)</span><kbd>X</kbd><span>proposant(e)</span>
+      <kbd>Suppr</kbd><span>supprimer</span><kbd>O</kbd><span>organiser</span>
+    </div>
+    <p class="small" style="margin:8px 0 0"><button class="lnk" id="moreHelp">Toute l’aide et la notation</button></p>
+  </aside>
+
+  <section class="stage" id="stage">
+    <svg id="cv" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1.1" fill="#dfe2d6"/></pattern>
+      </defs>
+      <g id="world">
+        <rect x="-50000" y="-50000" width="100000" height="100000" fill="url(#dots)"/>
+        <g id="content"></g>
+        <rect id="box" fill="rgba(29,127,119,.08)" stroke="#1d7f77" stroke-dasharray="4 3" display="none"/>
+      </g>
+    </svg>
+    <svg id="measure" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="anon-badge">Mode anonyme</div>
+    <div class="banner" id="banner"><span></span><button id="pickCancel">Annuler · Échap</button></div>
+    <div class="zoom">
+      <button class="btn icon" id="zIn" title="Zoom avant (+)">+</button>
+      <button class="btn icon" id="zOut" title="Zoom arrière (−)">−</button>
+      <button class="btn icon" id="zFit" title="Ajuster à l’écran (0)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+    <div class="hint" id="hint" hidden>
+      <button id="hintClose" aria-label="Fermer">×</button>
+      <b>Pour commencer</b>
+      <ul>
+        <li><b style="display:inline">Clic droit</b> sur un symbole : parents, conjoint, enfants, statuts…</li>
+        <li>Glisser un symbole : il s’aligne sur sa génération.</li>
+        <li><kbd>Maj</kbd> + glisser sur le fond : sélection multiple.</li>
+        <li>Glisser le fond : se déplacer · molette : zoom.</li>
+      </ul>
+    </div>
+    <div class="status"><span id="stCount"></span><span id="stF"></span><span class="grow"></span><span class="hide-sm">Clic droit : menu · Maj+glisser : sélection · Molette : zoom</span><span id="zoomPct"></span></div>
+  </section>
+
+  <aside class="right" id="right">
+    <button class="btn icon close-panel" data-close="right" aria-label="Fermer">×</button>
+    <div class="tabs">
+      <button class="tab on" data-tab="fiche">Fiche</button>
+      <button class="tab" data-tab="calc">Consanguinité</button>
+    </div>
+    <div id="panel"></div>
+  </aside>
+</main>
+
+<div id="ctx"></div>
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+<input type="file" id="file" accept=".json,application/json" hidden>
+
+<dialog id="dlgNew">
+  <div class="dlg-h">Nouvel arbre</div>
+  <div class="dlg-b">
+    <div class="tpls" id="tpls"></div>
+    <div class="field" style="margin-top:14px"><span>Sexe du/de la proposant(e)</span>
+      <div class="seg" id="newSex"><button data-v="M">Homme</button><button data-v="F" class="on">Femme</button><button data-v="U">Inconnu</button></div>
+    </div>
+    <p class="small muted" style="margin:4px 0 0">L’arbre actuel sera remplacé — <kbd>Ctrl</kbd>+<kbd>Z</kbd> permet de revenir en arrière. Pensez à l’enregistrer s’il doit être conservé.</p>
+  </div>
+  <div class="dlg-f"><button class="btn" data-close-dlg>Annuler</button><button class="btn primary" id="newGo">Créer</button></div>
+</dialog>
+
+<dialog id="dlgHelp">
+  <div class="dlg-h">Aide · PedigreeFes</div>
+  <div class="dlg-b">
+    <div class="help-grid">
+      <div>
+        <h4>Souris</h4>
+        <div class="keys">
+          <kbd>Clic droit</kbd><span>Menu : ajouter, statuts, relier, supprimer…</span>
+          <kbd>Glisser</kbd><span>Déplacer (aligné sur la génération)</span>
+          <kbd>Maj+glisser</kbd><span>Sélection rectangulaire</span>
+          <kbd>Maj+clic</kbd><span>Ajouter / retirer de la sélection</span>
+          <kbd>Double-clic</kbd><span>Modifier le nom</span>
+          <kbd>Fond</kbd><span>Glisser : déplacer la vue · molette : zoom</span>
+          <kbd>Appui long</kbd><span>Menu (écran tactile)</span>
+        </div>
+        <h4 style="margin-top:16px">Clavier</h4>
+        <div class="keys">
+          <kbd>Ctrl Z / Ctrl Y</kbd><span>Annuler / rétablir</span>
+          <kbd>Ctrl C / V / D</kbd><span>Copier / coller / dupliquer</span>
+          <kbd>Ctrl A</kbd><span>Tout sélectionner</span>
+          <kbd>Ctrl S / O / P</kbd><span>Enregistrer / ouvrir / imprimer</span>
+          <kbd>Suppr</kbd><span>Supprimer la sélection</span>
+          <kbd>Flèches</kbd><span>Déplacer (Maj : ×5) · ↑↓ change de génération</span>
+          <kbd>P C G F R S</kbd><span>Parents, conjoint, fils, fille, frère, sœur</span>
+          <kbd>A H M X</kbd><span>Atteint, porteur, décédé, proposant</span>
+          <kbd>O · 0 · + −</kbd><span>Organiser · ajuster · zoom</span>
+          <kbd>Échap</kbd><span>Annuler l’action / désélectionner</span>
+        </div>
+      </div>
+      <div>
+        <h4>Notation (NSGC, Bennett et al. 2022)</h4>
+        <div class="notation" id="notation"></div>
+      </div>
+    </div>
+    <p class="note">Tout reste dans votre navigateur : rien n’est envoyé sur un serveur. L’arbre en cours est sauvegardé automatiquement sur cet ordinateur ; utilisez « Enregistrer » pour garder un fichier .json par famille.</p>
+  </div>
+  <div class="dlg-f"><button class="btn primary" data-close-dlg>Fermer</button></div>
+</dialog>
+<script>
+(() => {
+'use strict';
+
+/* ═════════════ Constantes ═════════════ */
+const S = 40, H = S / 2, ROW = 150, GAP = 80, SNAP = 10;
+const FONT = 'Arial, Helvetica, sans-serif', MONO = "'Courier New', Courier, monospace";
+const INK = '#1d1d1b';
+const STORE = 'pedigreefes:autosave:v1', PREFS = 'pedigreefes:prefs:v1';
+const COLORS = ['#1d1d1b', '#c0392b', '#2471a3', '#d68910', '#7d3c98', '#1e8449', '#a04000', '#5d6d7e'];
+const KINDS = [['person', 'Individu'], ['preg', 'Grossesse en cours'], ['sab', 'Fausse couche (FCS)'], ['top', 'IMG / IVG'], ['stillbirth', 'Mort-né(e)']];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+const r1 = (n) => Math.round(n * 10) / 10;
+const snap = (v) => Math.round(v / SNAP) * SNAP;
+const fr = (v, d = 4) => Number(v).toLocaleString('fr-FR', { maximumSignificantDigits: d });
+
+/* ═════════════ Données ═════════════ */
+function blankDoc() {
+  return {
+    app: 'PedigreeFes', v: 1,
+    meta: { title: '', indication: '', author: '', date: today(), notes: '' },
+    people: {}, unions: {}, twins: {},
+    phenos: [{ id: 'ph1', name: 'Atteint', color: COLORS[0] }],
+    seq: 2,
+  };
+}
+let doc = blankDoc();
+const ui = {
+  sel: new Set(), selU: null, k: 1, tx: 0, ty: 0, anon: false, pick: null, hl: new Set(),
+  ids: true, guides: true, tab: 'fiche', clip: null, panelKey: '',
+  calc: { f: '', a: '', b: '', mode: 'carrier', val: '1/50', F: '', carrier: false },
+};
+
+const uid = (pre) => pre + (doc.seq++);
+const P = (id) => doc.people[id];
+const people = () => Object.values(doc.people);
+const unions = () => Object.values(doc.unions);
+
+function newPerson(o = {}) {
+  const p = {
+    id: uid('p'), sex: 'U', kind: 'person', x: 0, gen: 0, name: '', birth: '', age: '', dead: false,
+    deathAge: '', cause: '', aff: {}, carrier: '', proband: false, consultand: false, geno: '', test: '',
+    adopt: '', nochild: '', nochildNote: '', tw: null, sa: '', count: '', notes: '', pu: null,
+  };
+  for (const [k, v] of Object.entries(o)) if (k !== 'id' && v !== undefined) p[k] = v;
+  doc.people[p.id] = p;
+  return p;
+}
+function newUnion(a, b, o = {}) {
+  const u = Object.assign({ id: uid('u'), a, b, consang: 'auto', sep: false, label: '' }, o);
+  doc.unions[u.id] = u;
+  return u;
+}
+const unionsOf = (id) => unions().filter((u) => u.a === id || u.b === id);
+const partnerOf = (u, id) => (u.a === id ? u.b : u.a);
+const childrenOf = (uId) => people().filter((p) => p.pu === uId).sort((a, b) => a.x - b.x);
+function parentsOf(id) {
+  const p = P(id);
+  if (!p || !p.pu) return null;
+  const u = doc.unions[p.pu];
+  return u ? [u.a, u.b] : null;
+}
+const yOf = (p) => p.gen * ROW;
+const isTri = (p) => p.kind === 'sab' || p.kind === 'top';
+const halfW = (p) => (isTri(p) ? 17 : p.sex === 'U' ? H + 4 : H);
+const topOf = (p) => (isTri(p) ? 16 : p.sex === 'U' ? H + 4 : H);
+const botOf = (p) => (isTri(p) ? 15 : p.sex === 'U' ? H + 4 : H);
+function isAncestor(anc, id, seen = new Set()) {
+  const pr = parentsOf(id);
+  if (!pr || seen.has(id)) return false;
+  seen.add(id);
+  return pr.includes(anc) || pr.some((q) => isAncestor(anc, q, seen));
+}
+
+function cleanup() {
+  for (const u of unions()) if (!P(u.a) || !P(u.b) || u.a === u.b) delete doc.unions[u.id];
+  for (const p of people()) {
+    if (p.pu && !doc.unions[p.pu]) p.pu = null;
+    for (const k of Object.keys(p.aff)) if (!doc.phenos.some((ph) => ph.id === k)) delete p.aff[k];
+  }
+  const cnt = {};
+  people().forEach((p) => { if (p.tw) cnt[p.tw] = (cnt[p.tw] || 0) + 1; });
+  people().forEach((p) => { if (p.tw && (cnt[p.tw] || 0) < 2) p.tw = null; });
+  for (const t of Object.keys(doc.twins)) if (!(cnt[t] >= 2)) delete doc.twins[t];
+  people().forEach((p) => { if (p.tw && !doc.twins[p.tw]) doc.twins[p.tw] = '?'; });
+}
+
+/* ═════════════ Numérotation ═════════════ */
+function roman(n) {
+  const t = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let s = '';
+  for (const [v, r] of t) while (n >= v) { s += r; n -= v; }
+  return s;
+}
+let NUM = { lab: {}, gens: [] };
+function computeNumbering() {
+  const gens = [...new Set(people().map((p) => p.gen))].sort((a, b) => a - b);
+  const lab = {};
+  gens.forEach((g, i) => {
+    people().filter((p) => p.gen === g).sort((a, b) => a.x - b.x || (a.id < b.id ? -1 : 1))
+      .forEach((p, j) => { lab[p.id] = roman(i + 1) + '-' + (j + 1); });
+  });
+  NUM = { lab, gens };
+}
+const lab = (id) => NUM.lab[id] || '?';
+const who = (id) => { const p = P(id); return p ? lab(id) + (p.name && !ui.anon ? ' · ' + p.name : '') : '?'; };
+
+/* ═════════════ Consanguinité ═════════════ */
+const KC = new Map(), DC = new Map();
+function clearCache() { KC.clear(); DC.clear(); }
+function depth(id, stack = new Set()) {
+  if (DC.has(id)) return DC.get(id);
+  if (stack.has(id)) return 0;
+  stack.add(id);
+  const pr = parentsOf(id);
+  const d = pr ? 1 + Math.max(depth(pr[0], stack), depth(pr[1], stack)) : 0;
+  stack.delete(id);
+  DC.set(id, d);
+  return d;
+}
+/* Coefficient de parenté φ(a,b) — méthode récursive (Malécot). */
+function phi(a, b) {
+  if (!P(a) || !P(b)) return 0;
+  const key = a < b ? a + '|' + b : b + '|' + a;
+  if (KC.has(key)) return KC.get(key);
+  KC.set(key, 0);
+  let r;
+  if (a === b) {
+    const pr = parentsOf(a);
+    r = 0.5 * (1 + (pr ? phi(pr[0], pr[1]) : 0));
+  } else {
+    let x = a, y = b;
+    if (depth(b) > depth(a)) { x = b; y = a; }
+    const pr = parentsOf(x);
+    r = pr ? (phi(pr[0], y) + phi(pr[1], y)) / 2 : 0;
+  }
+  KC.set(key, r);
+  return r;
+}
+const Fof = (id) => { const pr = parentsOf(id); return pr ? phi(pr[0], pr[1]) : 0; };
+const consangOf = (u) => u.consang === 'yes' || (u.consang === 'auto' && phi(u.a, u.b) > 0);
+
+/* Chemins de Wright entre a et b (pour le détail du calcul). */
+function upPaths(id, cap) {
+  const out = [];
+  const rec = (path) => {
+    if (out.length >= cap) return;
+    out.push(path.slice());
+    const pr = parentsOf(path[path.length - 1]);
+    if (pr) for (const q of pr) {
+      if (path.includes(q)) continue;
+      path.push(q); rec(path); path.pop();
+    }
+  };
+  rec([id]);
+  return out;
+}
+function kinPaths(a, b) {
+  const CAP = 6000;
+  const A = upPaths(a, CAP), B = upPaths(b, CAP);
+  let truncated = A.length >= CAP || B.length >= CAP;
+  const byEnd = new Map();
+  for (const pb of B) {
+    const e = pb[pb.length - 1];
+    if (!byEnd.has(e)) byEnd.set(e, []);
+    byEnd.get(e).push(pb);
+  }
+  const res = [];
+  outer: for (const pa of A) {
+    const anc = pa[pa.length - 1];
+    const L = byEnd.get(anc);
+    if (!L) continue;
+    const set = new Set(pa.slice(0, -1));
+    for (const pb of L) {
+      if (pb.slice(0, -1).some((x) => set.has(x))) continue;
+      const n = pa.length + pb.length - 1;
+      res.push({ anc, pa, pb, n, c: Math.pow(0.5, n) * (1 + Fof(anc)) });
+      if (res.length >= 500) { truncated = true; break outer; }
+    }
+  }
+  res.sort((x, y) => y.c - x.c);
+  return { res, truncated };
+}
+function frac(v) {
+  if (!v) return '0';
+  for (let k = 0; k <= 40; k++) {
+    const n = v * 2 ** k;
+    if (Math.abs(n - Math.round(n)) < 1e-9) return k === 0 ? String(Math.round(n)) : `${Math.round(n)}/${2 ** k}`;
+  }
+  return '≈ 1/' + fr(1 / v, 3);
+}
+const pct = (v) => fr(v * 100, 3) + ' %';
+const oneIn = (v) => (v > 0 ? '1 / ' + Math.round(1 / v).toLocaleString('fr-FR') : '—');
+function degreeOf(f) {
+  if (f <= 0) return 0;
+  return Math.max(1, Math.round(Math.log2(1 / f)) - 1);
+}
+const degTxt = (d) => (d === 1 ? '1er degré' : d + 'e degré');
+const EXAMPLES = {
+  4: 'parent–enfant, frère–sœur',
+  8: 'oncle/tante–neveu/nièce, demi-frère/sœur, grand-parent–petit-enfant, cousins germains doubles',
+  16: 'cousins germains, demi-oncle–nièce, arrière-grand-parent',
+  32: 'cousin(e) germain(e) d’un parent, demi-cousins germains',
+  64: 'cousins issus de germains',
+  128: 'cousins issus de germains décalés d’une génération',
+};
+function parseNum(s) {
+  s = String(s ?? '').trim().replace(/\s/g, '').replace(',', '.');
+  if (!s) return NaN;
+  let m = s.match(/^([\d.]+)\/([\d.]+)$/);
+  if (m) return parseFloat(m[1]) / parseFloat(m[2]);
+  m = s.match(/^([\d.]+)%$/);
+  if (m) return parseFloat(m[1]) / 100;
+  return parseFloat(s);
+}
+
+/* ═════════════ Dessin ═════════════ */
+function shapeSvg(p, attrs) {
+  if (isTri(p)) return `<polygon points="0,-16 -17,15 17,15" ${attrs}/>`;
+  if (p.sex === 'M') return `<rect x="${-H}" y="${-H}" width="${S}" height="${S}" ${attrs}/>`;
+  if (p.sex === 'F') return `<circle r="${H}" ${attrs}/>`;
+  const d = H + 4;
+  return `<polygon points="0,${-d} ${d},0 0,${d} ${-d},0" ${attrs}/>`;
+}
+function isDark(hex) {
+  const n = parseInt(String(hex).slice(1), 16);
+  if (Number.isNaN(n)) return false;
+  return 0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255) < 150;
+}
+const ageTxt = (v) => { v = String(v || '').trim(); return /^\d+([.,]\d+)?$/.test(v) ? v + ' a' : v; };
+function textLines(p, anon) {
+  const L = [];
+  const sx = p.sex === 'M' ? '♂ ' : p.sex === 'F' ? '♀ ' : '';
+  if (!anon && p.name) L.push({ t: p.name, b: 1 });
+  if (isTri(p)) L.push({ t: sx + (p.kind === 'sab' ? 'FCS' : 'IMG') + (p.sa ? ' ' + p.sa + ' SA' : '') });
+  else if (p.kind === 'stillbirth') L.push({ t: 'MN' + (p.sa ? ' ' + p.sa + ' SA' : '') });
+  else if (p.kind === 'preg' && p.sa) L.push({ t: p.sa + ' SA' });
+  const a = [];
+  if (!anon && p.birth) a.push('n. ' + p.birth);
+  if (p.dead) a.push('†' + (p.deathAge ? ' ' + ageTxt(p.deathAge) : ''));
+  else if (p.age) a.push(ageTxt(p.age));
+  let al = a.join(' · ');
+  if (p.dead && p.cause) al += (al ? ', ' : '') + p.cause;
+  if (al) L.push({ t: al });
+  for (const ph of doc.phenos) { const d = p.aff[ph.id]; if (d) L.push({ t: d }); }
+  if (p.geno) L.push({ t: p.geno, m: 1 });
+  if (p.test) L.push({ t: p.test, b: 1 });
+  if (p.nochildNote) L.push({ t: p.nochildNote, i: 1 });
+  if (!anon && p.notes) p.notes.split('\n').forEach((t) => { if (t.trim()) L.push({ t: t.trim(), i: 1 }); });
+  return L;
+}
+
+function drawPerson(p, o) {
+  const phs = doc.phenos.filter((ph) => ph.id in p.aff);
+  let s = `<g class="pn" data-pid="${p.id}" transform="translate(${p.x},${yOf(p)})">`;
+  if (o.ui && ui.hl.has(p.id)) s += `<circle r="${H + 12}" fill="rgba(230,126,34,.12)" stroke="#e67e22" stroke-width="3"/>`;
+  if (o.ui && ui.sel.has(p.id)) s += `<rect x="${-H - 9}" y="${-H - 9}" width="${S + 18}" height="${S + 18}" rx="6" fill="rgba(29,127,119,.08)" stroke="#1d7f77" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  s += shapeSvg(p, `fill="${phs.length === 1 ? phs[0].color : '#fff'}"`);
+  if (phs.length > 1) {
+    const cid = 'cp-' + p.id + (o.ui ? '' : '-x');
+    const k = phs.length, R = 40;
+    s += `<clipPath id="${cid}">${shapeSvg(p, '')}</clipPath><g clip-path="url(#${cid})">`;
+    phs.forEach((ph, i) => {
+      const a0 = (-90 + i * 360 / k) * Math.PI / 180, a1 = (-90 + (i + 1) * 360 / k) * Math.PI / 180;
+      s += `<path d="M0,0L${r1(R * Math.cos(a0))},${r1(R * Math.sin(a0))}A${R},${R} 0 0 1 ${r1(R * Math.cos(a1))},${r1(R * Math.sin(a1))}Z" fill="${ph.color}"/>`;
+    });
+    s += '</g>';
+  }
+  s += shapeSvg(p, `fill="none" stroke="${INK}" stroke-width="1.8"`);
+  const inC = phs.length === 1 && isDark(phs[0].color) ? '#fff' : INK;
+  if (p.carrier === 'carrier') s += `<circle r="4.6" fill="${inC}"/>`;
+  if (p.carrier === 'presym') s += `<line x1="0" y1="${-topOf(p)}" x2="0" y2="${botOf(p)}" stroke="${inC}" stroke-width="2.6"/>`;
+  const ctr = p.kind === 'preg' ? 'P' : String(p.count || '').trim();
+  if (ctr && !isTri(p)) {
+    const halo = inC === '#fff' ? INK : '#fff';
+    s += `<text y="5.5" text-anchor="middle" font-family="${FONT}" font-size="15" font-weight="700" fill="${inC}" stroke="${halo}" stroke-width="3" paint-order="stroke">${esc(ctr)}</text>`;
+  }
+  if (p.dead || p.kind === 'stillbirth' || p.kind === 'top') {
+    const e = isTri(p) ? 21 : H + 8;
+    s += `<line x1="${-e}" y1="${e}" x2="${e}" y2="${-e}" stroke="${INK}" stroke-width="1.8"/>`;
+  }
+  if (p.adopt) {
+    const e = halfW(p) + 6, t = 6, v = topOf(p) + 6;
+    s += `<path d="M${-e + t},${-v}H${-e}V${v}H${-e + t}M${e - t},${-v}H${e}V${v}H${e - t}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+  }
+  if (p.proband || p.consultand) {
+    const d = Math.SQRT1_2, tx = -halfW(p) - 2, ty = botOf(p) + 2;
+    const bx = tx - 9 * d, by = ty + 9 * d;
+    s += `<line x1="${tx - 26 * d}" y1="${ty + 26 * d}" x2="${r1(bx)}" y2="${r1(by)}" stroke="${INK}" stroke-width="1.8"/>`;
+    s += `<polygon points="${tx},${ty} ${r1(bx + 4.5 * d)},${r1(by + 4.5 * d)} ${r1(bx - 4.5 * d)},${r1(by - 4.5 * d)}" fill="${INK}" transform="rotate(0)"/>`;
+    if (p.proband) s += `<text x="${r1(tx - 26 * d - 7)}" y="${r1(ty + 26 * d + 9)}" text-anchor="middle" font-family="${FONT}" font-size="13" font-weight="700" fill="${INK}">P</text>`;
+  }
+  let ty = botOf(p) + (p.adopt ? 6 : 0);
+  if (p.nochild) {
+    const y1 = ty + 16;
+    s += `<path d="M0,${ty}V${y1}M-11,${y1}H11${p.nochild === 'infertile' ? `M-11,${y1 + 4}H11` : ''}" stroke="${INK}" stroke-width="1.7" fill="none"/>`;
+    ty = y1 + (p.nochild === 'infertile' ? 8 : 4);
+  }
+  if (o.ids) s += `<text x="${-halfW(p) - 5}" y="${-topOf(p) - 3}" text-anchor="end" font-family="${FONT}" font-size="10.5" fill="#6b6b66">${lab(p.id)}</text>`;
+  let ly = ty + 15 + (p.dead || p.kind === 'stillbirth' ? 5 : 0);
+  for (const l of textLines(p, o.anon)) {
+    s += `<text x="0" y="${ly}" text-anchor="middle" font-family="${l.m ? MONO : FONT}" font-size="11"${l.b ? ' font-weight="700"' : ''}${l.i ? ' font-style="italic"' : ''} fill="${INK}">${esc(l.t)}</text>`;
+    ly += 13;
+  }
+  if (o.ui) s += `<rect x="${-H - 6}" y="${-H - 6}" width="${S + 12}" height="${S + 12}" fill="transparent"/>`;
+  return s + '</g>';
+}
+
+function drawUnion(u, o) {
+  const a = P(u.a), b = P(u.b);
+  if (!a || !b) return '';
+  let L = a, R = b;
+  if (b.x < a.x || (b.x === a.x && b.gen < a.gen)) { L = b; R = a; }
+  const st = `stroke="${INK}" stroke-width="1.7" fill="none"`;
+  const cons = consangOf(u);
+  const yl = yOf(L), yr = yOf(R);
+  let s = '', d, mx, my;
+  if (yl === yr) {
+    let x1 = L.x + halfW(L), x2 = R.x - halfW(R);
+    if (x2 < x1) { x1 = L.x; x2 = R.x; }
+    d = `M${x1},${yl}H${x2}`;
+    s += cons ? `<path d="M${x1},${yl - 3}H${x2}M${x1},${yl + 3}H${x2}" ${st}/>` : `<path d="${d}" ${st}/>`;
+    mx = (x1 + x2) / 2; my = yl;
+  } else {
+    d = `M${L.x},${yl}L${R.x},${yr}`;
+    s += cons ? `<path d="M${L.x},${yl - 3}L${R.x},${yr - 3}M${L.x},${yl + 3}L${R.x},${yr + 3}" ${st}/>` : `<path d="${d}" ${st}/>`;
+    mx = (L.x + R.x) / 2; my = (yl + yr) / 2;
+  }
+  if (o.ui && ui.selU === u.id) s = `<path d="${d}" stroke="#1d7f77" stroke-width="9" stroke-linecap="round" opacity=".3" fill="none"/>` + s;
+  if (u.sep) for (const cx of [mx - 15, mx - 8]) s += `<line x1="${cx - 4}" y1="${my + 8}" x2="${cx + 4}" y2="${my - 8}" stroke="${INK}" stroke-width="1.6"/>`;
+  if (u.label) s += `<text x="${mx}" y="${my - (cons ? 9 : 7)}" text-anchor="middle" font-family="${FONT}" font-size="10.5" font-style="italic" fill="#444">${esc(u.label)}</text>`;
+
+  const kids = childrenOf(u.id);
+  if (kids.length) {
+    const sibY = Math.min(...kids.map((k) => yOf(k) - topOf(k) - (k.adopt ? 6 : 0))) - 26;
+    if (sibY > my) s += `<path d="M${mx},${my}V${sibY}" ${st}/>`;
+    const groups = [], seen = new Map();
+    for (const k of kids) {
+      if (k.tw && kids.filter((z) => z.tw === k.tw).length > 1) {
+        if (!seen.has(k.tw)) { const g = { tw: k.tw, m: [] }; seen.set(k.tw, g); groups.push(g); }
+        seen.get(k.tw).m.push(k);
+      } else groups.push({ m: [k] });
+    }
+    const ax = groups.map((g) => g.m.reduce((t, k) => t + k.x, 0) / g.m.length);
+    const lo = Math.min(mx, ...ax), hi = Math.max(mx, ...ax);
+    if (hi - lo > 0.5) s += `<path d="M${lo},${sibY}H${hi}" ${st}/>`;
+    groups.forEach((g, i) => {
+      const X = ax[i];
+      if (g.m.length === 1) {
+        const k = g.m[0];
+        s += `<path d="M${X},${sibY}V${yOf(k) - topOf(k) - (k.adopt ? 6 : 0)}" ${st}${k.adopt === 'in' ? ' stroke-dasharray="5 4"' : ''}/>`;
+        return;
+      }
+      for (const k of g.m) s += `<path d="M${X},${sibY}L${k.x},${yOf(k) - topOf(k)}" ${st}/>`;
+      const type = doc.twins[g.tw];
+      const ty = Math.min(...g.m.map((k) => yOf(k) - topOf(k)));
+      const yb = sibY + (ty - sibY) * 0.5;
+      const xs = g.m.map((k) => k.x);
+      if (type === 'MZ') s += `<path d="M${X + (Math.min(...xs) - X) * 0.5},${yb}H${X + (Math.max(...xs) - X) * 0.5}" ${st}/>`;
+      else if (type === '?') s += `<text x="${X}" y="${yb + 4}" text-anchor="middle" font-family="${FONT}" font-size="12" font-weight="700" fill="${INK}">?</text>`;
+    });
+  }
+  if (o.ui) s += `<path d="${d}" data-uid="${u.id}" stroke="transparent" stroke-width="14" fill="none"/>`;
+  return s;
+}
+
+function drawPedigree(o) {
+  computeNumbering();
+  const ps = people();
+  let s = '';
+  if (ps.length) {
+    const minX = Math.min(...ps.map((p) => p.x)), maxX = Math.max(...ps.map((p) => p.x));
+    NUM.gens.forEach((g, i) => {
+      const y = g * ROW;
+      if (o.ui && o.guides) s += `<line x1="${minX - 150}" x2="${maxX + 150}" y1="${y}" y2="${y}" stroke="#d6dacb" stroke-dasharray="2 6"/>`;
+      s += `<text x="${minX - 100}" y="${y + 5}" text-anchor="middle" font-family="${FONT}" font-size="15" font-weight="700" fill="${INK}">${roman(i + 1)}</text>`;
+    });
+  }
+  for (const u of unions()) s += drawUnion(u, o);
+  for (const p of ps) s += drawPerson(p, o);
+  return s;
+}
+
+function miniSymbol(p, size = 40) {
+  const phs = doc.phenos.filter((ph) => ph.id in p.aff);
+  const fill = phs.length ? phs[0].color : '#fff';
+  return `<svg viewBox="-28 -28 56 56" width="${size}" height="${size}">${shapeSvg(p, `fill="${fill}" stroke="${INK}" stroke-width="2"`)}${p.dead ? `<line x1="-27" y1="27" x2="27" y2="-27" stroke="${INK}" stroke-width="2"/>` : ''}</svg>`;
+}
+
+/* ═════════════ Rendu & état ═════════════ */
+const svg = $('cv'), world = $('world'), content = $('content'), panel = $('panel');
+function render() {
+  content.innerHTML = drawPedigree({ ui: true, anon: ui.anon, ids: ui.ids, guides: ui.guides });
+  applyView();
+  renderStatus();
+}
+function applyView() {
+  world.setAttribute('transform', `translate(${ui.tx},${ui.ty}) scale(${ui.k})`);
+  $('zoomPct').textContent = Math.round(ui.k * 100) + ' %';
+}
+function renderStatus() {
+  const ps = people();
+  $('stCount').textContent = `${ps.length} individu${ps.length > 1 ? 's' : ''} · ${NUM.gens.length} génération${NUM.gens.length > 1 ? 's' : ''}`;
+  const pb = ps.find((p) => p.proband);
+  $('stF').innerHTML = pb && pb.pu ? `Proposant(e) ${lab(pb.id)} : <b>F = ${frac(Fof(pb.id))}</b>` : '';
+}
+
+const undoS = [], redoS = [];
+let editing = false;
+function pushUndo() {
+  undoS.push(JSON.stringify(doc));
+  if (undoS.length > 200) undoS.shift();
+  redoS.length = 0;
+  updUndo();
+}
+function commit(fn) {
+  pushUndo();
+  fn();
+  cleanup();
+  changed();
+}
+function changed(panelToo = true) {
+  clearCache();
+  cleanSel();
+  render();
+  if (panelToo) renderPanel();
+  save();
+  updUndo();
+}
+function liveEdit(apply) {
+  if (!editing) { pushUndo(); editing = true; }
+  apply();
+  clearCache();
+  render();
+  save();
+}
+function restore(json) {
+  doc = Object.assign(blankDoc(), JSON.parse(json));
+  changed();
+}
+function undo() {
+  if (!undoS.length) return;
+  redoS.push(JSON.stringify(doc));
+  restore(undoS.pop());
+}
+function redo() {
+  if (!redoS.length) return;
+  undoS.push(JSON.stringify(doc));
+  restore(redoS.pop());
+}
+function updUndo() {
+  $('bUndo').disabled = !undoS.length;
+  $('bRedo').disabled = !redoS.length;
+}
+function cleanSel() {
+  for (const id of [...ui.sel]) if (!P(id)) ui.sel.delete(id);
+  if (ui.selU && !doc.unions[ui.selU]) ui.selU = null;
+  for (const id of [...ui.hl]) if (!P(id)) ui.hl.delete(id);
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(doc)); } catch (e) { /* stockage indisponible */ }
+}
+function savePrefs() {
+  try { localStorage.setItem(PREFS, JSON.stringify({ ids: ui.ids, guides: ui.guides, anon: ui.anon, theme: document.documentElement.dataset.theme || '', hint: prefs.hint })); } catch (e) { /* idem */ }
+}
+let prefs = {};
+try { prefs = JSON.parse(localStorage.getItem(PREFS) || '{}') || {}; } catch (e) { prefs = {}; }
+
+let toastT;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ═════════════ Opérations sur l'arbre ═════════════ */
+/* Écarte les voisins d'une génération pour laisser la place aux individus « fixed ». */
+function makeRoom(gen, fixed) {
+  const F = new Set(fixed);
+  const xs = fixed.map((id) => P(id).x);
+  const lo = Math.min(...xs), hi = Math.max(...xs), c = (lo + hi) / 2;
+  const row = people().filter((p) => p.gen === gen && !F.has(p.id));
+  let lim = lo - GAP;
+  row.filter((p) => p.x < c).sort((a, b) => b.x - a.x).forEach((p) => { if (p.x > lim) p.x = lim; lim = p.x - GAP; });
+  lim = hi + GAP;
+  row.filter((p) => p.x >= c).sort((a, b) => a.x - b.x).forEach((p) => { if (p.x < lim) p.x = lim; lim = p.x + GAP; });
+}
+function addPartnerRaw(p) {
+  const n = unionsOf(p.id).length;
+  const right = p.sex !== 'F';
+  const q = newPerson({ sex: p.sex === 'M' ? 'F' : p.sex === 'F' ? 'M' : 'U', gen: p.gen, x: p.x + (right ? 1 : -1) * GAP * (n + 1) });
+  newUnion(right ? p.id : q.id, right ? q.id : p.id);
+  makeRoom(p.gen, [p.id, q.id]);
+  return q;
+}
+function ensureParents(p) {
+  if (p.pu && doc.unions[p.pu]) return doc.unions[p.pu];
+  const f = newPerson({ sex: 'M', gen: p.gen - 1, x: snap(p.x - GAP / 2) });
+  const m = newPerson({ sex: 'F', gen: p.gen - 1, x: snap(p.x + GAP / 2) });
+  const u = newUnion(f.id, m.id);
+  p.pu = u.id;
+  makeRoom(p.gen - 1, [f.id, m.id]);
+  return u;
+}
+function addChildRaw(u, opt = {}) {
+  const a = P(u.a), b = P(u.b);
+  const g = Math.max(a.gen, b.gen) + 1, mx = (a.x + b.x) / 2;
+  const kids = childrenOf(u.id);
+  const c = newPerson({ sex: opt.sex || 'U', kind: opt.kind || 'person', gen: g, pu: u.id,
+    x: kids.length ? Math.max(...kids.map((k) => k.x)) + GAP : snap(mx) });
+  const all = [...kids, c];
+  // fratrie « feuille » (sans conjoint) : on la recentre sous les parents
+  if (all.every((k) => !unionsOf(k.id).length && k.gen === g)) all.forEach((k, i) => { k.x = snap(mx + (i - (all.length - 1) / 2) * GAP); });
+  makeRoom(g, all.filter((k) => k.gen === g).map((k) => k.id));
+  return c;
+}
+function addSiblingRaw(p, opt = {}) {
+  ensureParents(p);
+  const spouseRight = unionsOf(p.id).some((u) => P(partnerOf(u, p.id)).x > p.x);
+  const c = newPerson({ sex: opt.sex || 'U', kind: opt.kind || 'person', gen: p.gen, pu: p.pu, x: p.x + (spouseRight ? -GAP : GAP) });
+  makeRoom(p.gen, [p.id, c.id]);
+  return c;
+}
+function unionFor(p) {
+  if (!unionsOf(p.id).length) addPartnerRaw(p);
+  const us = unionsOf(p.id);
+  return us[us.length - 1];
+}
+function addKids(u, opt) {
+  const ids = [];
+  if (opt.twins) {
+    const sx = opt.sexes || [opt.sex || 'U', opt.sex || 'U'];
+    const a = addChildRaw(u, { sex: sx[0] }), b = addChildRaw(u, { sex: sx[1] });
+    const t = uid('t');
+    doc.twins[t] = opt.twins;
+    a.tw = b.tw = t;
+    ids.push(a.id, b.id);
+  } else ids.push(addChildRaw(u, opt).id);
+  ui.sel = new Set(ids);
+  ui.selU = null;
+}
+const opAddChild = (p, opt) => commit(() => addKids(unionFor(p), opt));
+const opAddChildU = (u, opt) => commit(() => addKids(u, opt));
+const opAddPartner = (p) => commit(() => { const q = addPartnerRaw(p); ui.sel = new Set([q.id]); });
+function opAddParents(p) {
+  if (p.pu) return toast('Cet individu a déjà des parents');
+  commit(() => { ensureParents(p); });
+}
+function opAddSibling(p, opt) {
+  commit(() => {
+    const c = addSiblingRaw(p, opt);
+    if (opt.twins) {
+      if (!p.tw) { const t = uid('t'); doc.twins[t] = opt.twins; p.tw = t; }
+      c.tw = p.tw;
+    }
+    ui.sel = new Set([c.id]);
+  });
+}
+function opDelete(ids, withDesc) {
+  if (!ids.length) return;
+  commit(() => {
+    const set = new Set(ids);
+    if (withDesc) {
+      const stack = [...ids];
+      while (stack.length) {
+        const id = stack.pop();
+        for (const u of unionsOf(id)) for (const k of childrenOf(u.id)) if (!set.has(k.id)) { set.add(k.id); stack.push(k.id); }
+      }
+      // conjoint(e)s « rapporté(e)s » des descendants
+      for (const id of [...set]) {
+        if (ids.includes(id)) continue;
+        for (const u of unionsOf(id)) {
+          const q = P(partnerOf(u, id));
+          if (!q || set.has(q.id) || q.pu) continue;
+          if (unionsOf(q.id).every((v) => set.has(partnerOf(v, q.id)))) set.add(q.id);
+        }
+      }
+    }
+    let orphans = 0;
+    for (const id of set) for (const u of unionsOf(id)) orphans += childrenOf(u.id).filter((k) => !set.has(k.id)).length;
+    set.forEach((id) => delete doc.people[id]);
+    ui.sel.clear();
+    toast(`${set.size} supprimé(s)${orphans ? ` · ${orphans} enfant(s) détaché(s)` : ''} — Ctrl+Z pour annuler`);
+  });
+}
+function opDeleteUnion(u) {
+  commit(() => { delete doc.unions[u.id]; ui.selU = null; });
+  toast('Union supprimée — Ctrl+Z pour annuler');
+}
+const targets = () => [...ui.sel].map(P).filter(Boolean);
+function toggleOnSel(test, set) {
+  const T = targets();
+  if (!T.length) return;
+  const on = !T.every(test);
+  commit(() => T.forEach((p) => set(p, on)));
+}
+const togglePheno = (phId) => toggleOnSel((p) => phId in p.aff, (p, on) => { if (on) p.aff[phId] = p.aff[phId] || ''; else delete p.aff[phId]; });
+const toggleCarrier = (v) => toggleOnSel((p) => p.carrier === v, (p, on) => { p.carrier = on ? v : ''; });
+const toggleDead = () => toggleOnSel((p) => p.dead, (p, on) => { p.dead = on; });
+const toggleConsultand = () => toggleOnSel((p) => p.consultand, (p, on) => { p.consultand = on; });
+function toggleProband(p) {
+  commit(() => { const on = !p.proband; people().forEach((q) => { q.proband = false; }); p.proband = on; });
+}
+const setOnSel = (field, v) => commit(() => targets().forEach((p) => { p[field] = v; }));
+function linkParents(c, u) {
+  c.pu = u.id;
+  c.gen = Math.max(P(u.a).gen, P(u.b).gen) + 1;
+}
+function newPheno() {
+  commit(() => {
+    const n = doc.phenos.length;
+    doc.phenos.push({ id: uid('ph'), name: 'Phénotype ' + (n + 1), color: COLORS[n % COLORS.length] });
+  });
+  const ins = document.querySelectorAll('[data-phn]');
+  if (ins.length) { ins[ins.length - 1].focus(); ins[ins.length - 1].select(); }
+}
+
+/* Copier / coller */
+function copySel() {
+  const ids = new Set(ui.sel);
+  if (!ids.size) return false;
+  ui.clip = {
+    ps: [...ids].map((id) => JSON.parse(JSON.stringify(P(id)))),
+    us: unions().filter((u) => ids.has(u.a) && ids.has(u.b)).map((u) => ({ ...u })),
+    tw: { ...doc.twins },
+  };
+  return true;
+}
+function paste(at) {
+  const C = ui.clip;
+  if (!C || !C.ps.length) return toast('Rien à coller');
+  commit(() => {
+    const map = {}, umap = {}, tmap = {};
+    const minX = Math.min(...C.ps.map((p) => p.x)), minG = Math.min(...C.ps.map((p) => p.gen));
+    const dx = at ? at.x - minX : 60, dg = at ? Math.round(at.y / ROW) - minG : 0;
+    C.us.forEach((u) => { umap[u.id] = uid('u'); });
+    for (const src of C.ps) {
+      const o = JSON.parse(JSON.stringify(src));
+      delete o.id;
+      o.x = snap(src.x + dx); o.gen = src.gen + dg; o.proband = false;
+      o.pu = src.pu && umap[src.pu] ? umap[src.pu] : null;
+      if (src.tw) { if (!tmap[src.tw]) { tmap[src.tw] = uid('t'); doc.twins[tmap[src.tw]] = C.tw[src.tw] || '?'; } o.tw = tmap[src.tw]; }
+      map[src.id] = newPerson(o).id;
+    }
+    C.us.forEach((u) => { doc.unions[umap[u.id]] = { ...u, id: umap[u.id], a: map[u.a], b: map[u.b] }; });
+    ui.sel = new Set(Object.values(map));
+    ui.selU = null;
+  });
+}
+
+/* ═════════════ Mise en page automatique ═════════════ */
+function organise() {
+  const ps = people();
+  if (!ps.length) return;
+  pushUndo();
+  const meanBefore = ps.reduce((t, p) => t + p.x, 0) / ps.length;
+  const linked = new Set();
+  unions().forEach((u) => { linked.add(u.a); linked.add(u.b); });
+  ps.forEach((p) => { if (p.pu) linked.add(p.id); });
+  const topBefore = linked.size ? Math.min(...[...linked].map((id) => P(id).gen)) : 0;
+
+  // 1. générations : conjoints au même niveau, enfants un niveau sous leurs parents
+  const G = {};
+  ps.forEach((p) => { G[p.id] = 0; });
+  for (let it = 0; it < 300; it++) {
+    let ch = false;
+    for (const u of unions()) {
+      const m = Math.max(G[u.a], G[u.b]);
+      if (G[u.a] !== m) { G[u.a] = m; ch = true; }
+      if (G[u.b] !== m) { G[u.b] = m; ch = true; }
+    }
+    for (const p of ps) if (p.pu) {
+      const pr = parentsOf(p.id);
+      const m = Math.max(G[pr[0]], G[pr[1]]) + 1;
+      if (G[p.id] < m) { G[p.id] = m; ch = true; }
+    }
+    if (!ch) break;
+  }
+  const minG = linked.size ? Math.min(...[...linked].map((id) => G[id])) : 0;
+  ps.forEach((p) => { if (linked.has(p.id)) p.gen = G[p.id] - minG + topBefore; });
+
+  // 2. blocs = individu(s) né(s) dans la famille + conjoint(s) rapporté(s)
+  const rows = new Map();
+  ps.forEach((p) => { if (!rows.has(p.gen)) rows.set(p.gen, []); rows.get(p.gen).push(p); });
+  const gens = [...rows.keys()].sort((a, b) => a - b);
+  const blocksOf = {};
+  for (const g of gens) {
+    const row = rows.get(g), ids = new Set(row.map((p) => p.id)), par = {};
+    const f = (x) => (par[x] === x ? x : (par[x] = f(par[x])));
+    row.forEach((p) => { par[p.id] = p.id; });
+    for (const u of unions()) {
+      if (!ids.has(u.a) || !ids.has(u.b)) continue;
+      if (P(u.a).pu && P(u.b).pu) continue;
+      par[f(u.a)] = f(u.b);
+    }
+    const m = new Map();
+    row.forEach((p) => { const r = f(p.id); if (!m.has(r)) m.set(r, []); m.get(r).push(p); });
+    blocksOf[g] = [...m.values()];
+  }
+  const mid = (u) => (P(u.a).x + P(u.b).x) / 2;
+  const coreX = (b) => { const c = b.filter((p) => p.pu); const L = c.length ? c : b; return L.reduce((t, p) => t + p.x, 0) / L.length; };
+
+  function placeRow(g) {
+    const groups = new Map();
+    for (const b of blocksOf[g]) {
+      b.sort((a, c) => a.x - c.x);
+      const core = b.find((p) => p.pu);
+      const key = core ? core.pu : 'solo:' + b[0].id;
+      if (!groups.has(key)) groups.set(key, { pu: core ? core.pu : null, blocks: [] });
+      groups.get(key).blocks.push(b);
+    }
+    const list = [...groups.values()];
+    for (const gr of list) {
+      gr.blocks.sort((a, b) => coreX(a) - coreX(b));
+      let x = 0;
+      gr.pos = [];
+      gr.blocks.forEach((b) => b.forEach((p) => { gr.pos.push([p, x]); x += GAP; }));
+      const cores = gr.pos.filter(([p]) => gr.pu && p.pu === gr.pu);
+      const base = cores.length ? cores : gr.pos;
+      const cm = base.reduce((t, [, v]) => t + v, 0) / base.length;
+      const pu = gr.pu && doc.unions[gr.pu];
+      gr.desired = pu ? mid(pu) : gr.pos.reduce((t, [p]) => t + p.x, 0) / gr.pos.length;
+      gr.shift = gr.desired - cm;
+    }
+    list.sort((a, b) => a.desired - b.desired);
+    let right = -Infinity;
+    for (const gr of list) {
+      const left = gr.pos[0][1] + gr.shift;
+      if (left < right + GAP) gr.shift += right + GAP - left;
+      gr.pos.forEach(([p, v]) => { p.x = v + gr.shift; });
+      right = gr.pos[gr.pos.length - 1][1] + gr.shift;
+    }
+  }
+  function liftRow(g) {
+    const blocks = blocksOf[g];
+    for (const b of blocks) {
+      if (b.some((p) => p.pu)) continue;
+      let sum = 0, n = 0;
+      for (const p of b) for (const u of unionsOf(p.id)) {
+        const ks = childrenOf(u.id);
+        if (!ks.length) continue;
+        sum += ks.reduce((t, k) => t + k.x, 0) / ks.length - mid(u);
+        n++;
+      }
+      if (n) b.forEach((p) => { p.x += sum / n; });
+    }
+    blocks.sort((a, b) => a[0].x - b[0].x);
+    let right = -Infinity;
+    for (const b of blocks) {
+      b.sort((a, c) => a.x - c.x);
+      const sh = Math.max(0, right + GAP - b[0].x);
+      b.forEach((p, i) => { p.x = i ? Math.max(p.x + sh, b[i - 1].x + GAP) : p.x + sh; });
+      right = b[b.length - 1].x;
+    }
+  }
+  for (let it = 0; it < 3; it++) {
+    gens.forEach(placeRow);
+    [...gens].reverse().forEach(liftRow);
+  }
+  const meanAfter = ps.reduce((t, p) => t + p.x, 0) / ps.length;
+  ps.forEach((p) => { p.x = snap(p.x - meanAfter + meanBefore); });
+  cleanup();
+  changed();
+}
+
+/* ═════════════ Vue : zoom, déplacement ═════════════ */
+function toWorld(e) {
+  const r = svg.getBoundingClientRect();
+  return { x: (e.clientX - r.left - ui.tx) / ui.k, y: (e.clientY - r.top - ui.ty) / ui.k };
+}
+function zoomAt(f, cx, cy) {
+  const r = svg.getBoundingClientRect();
+  if (cx == null) { cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
+  const k = Math.min(4, Math.max(0.15, ui.k * f));
+  const px = cx - r.left, py = cy - r.top;
+  ui.tx = px - (px - ui.tx) * k / ui.k;
+  ui.ty = py - (py - ui.ty) * k / ui.k;
+  ui.k = k;
+  applyView();
+}
+function fit() {
+  const r = svg.getBoundingClientRect();
+  if (!r.width) return;
+  if (!people().length) { ui.k = 1; ui.tx = r.width / 2; ui.ty = r.height / 3; applyView(); return; }
+  const bb = content.getBBox(), m = 50;
+  const k = Math.min((r.width - 2 * m) / Math.max(bb.width, 1), (r.height - 2 * m - 28) / Math.max(bb.height, 1), 1.5);
+  ui.k = Math.max(0.15, k);
+  ui.tx = r.width / 2 - (bb.x + bb.width / 2) * ui.k;
+  ui.ty = (r.height - 28) / 2 - (bb.y + bb.height / 2) * ui.k;
+  applyView();
+}
+function viewCenter() {
+  const r = svg.getBoundingClientRect();
+  return toWorld({ clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
+}
+
+/* ═════════════ Pointeur ═════════════ */
+let drag = null, lpTimer = null, lastClick = { id: null, t: 0 };
+const clearLP = () => { clearTimeout(lpTimer); lpTimer = null; };
+svg.addEventListener('pointerdown', (e) => {
+  hideCtx();
+  if (e.pointerType === 'mouse' && e.button === 2) return;
+  const pn = e.target.closest('.pn'), uh = e.target.closest('[data-uid]');
+  if (e.button === 1) {
+    e.preventDefault();
+    drag = { t: 'pan', cx: e.clientX, cy: e.clientY, tx: ui.tx, ty: ui.ty, moved: true };
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  if (ui.pick) { pickAt(pn && pn.dataset.pid, uh && uh.dataset.uid); return; }
+  if (e.pointerType !== 'mouse') {
+    const ev = { clientX: e.clientX, clientY: e.clientY, target: e.target };
+    lpTimer = setTimeout(() => { lpTimer = null; drag = null; openContext(ev); }, 550);
+  }
+  const w = toWorld(e);
+  if (pn) {
+    const id = pn.dataset.pid;
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id);
+      ui.selU = null;
+      render(); renderPanel();
+      return;
+    }
+    const wasSel = ui.sel.has(id);
+    if (!wasSel) { ui.sel = new Set([id]); ui.selU = null; render(); renderPanel(); }
+    drag = { t: 'move', id, wasSel, sx: w.x, sy: w.y, moved: false,
+      orig: new Map([...ui.sel].map((i) => [i, { x: P(i).x, g: P(i).gen }])) };
+  } else if (uh) {
+    ui.selU = uh.dataset.uid; ui.sel.clear();
+    render(); renderPanel();
+    return;
+  } else if (e.shiftKey) {
+    drag = { t: 'box', sx: w.x, sy: w.y };
+  } else {
+    drag = { t: 'pan', cx: e.clientX, cy: e.clientY, tx: ui.tx, ty: ui.ty, moved: false };
+  }
+  svg.setPointerCapture(e.pointerId);
+});
+svg.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (drag.t === 'pan') {
+    const dx = e.clientX - drag.cx, dy = e.clientY - drag.cy;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    if (!drag.moved) { drag.moved = true; clearLP(); }
+    svg.classList.add('panning');
+    ui.tx = drag.tx + dx; ui.ty = drag.ty + dy;
+    applyView();
+    return;
+  }
+  const w = toWorld(e);
+  if (drag.t === 'move') {
+    const dx = w.x - drag.sx, dy = w.y - drag.sy;
+    if (!drag.moved && Math.hypot(dx, dy) * ui.k < 4) return;
+    if (!drag.moved) { drag.moved = true; clearLP(); pushUndo(); }
+    const dg = Math.round(dy / ROW);
+    for (const [i, o] of drag.orig) { const p = P(i); if (p) { p.x = snap(o.x + dx); p.gen = o.g + dg; } }
+    clearCache();
+    render();
+  } else if (drag.t === 'box') {
+    drag.ex = w.x; drag.ey = w.y;
+    const b = $('box');
+    b.setAttribute('x', Math.min(drag.sx, w.x)); b.setAttribute('y', Math.min(drag.sy, w.y));
+    b.setAttribute('width', Math.abs(w.x - drag.sx)); b.setAttribute('height', Math.abs(w.y - drag.sy));
+    b.setAttribute('display', 'inline');
+  }
+});
+function endDrag() {
+  clearLP();
+  const d = drag;
+  drag = null;
+  svg.classList.remove('panning');
+  if (!d) return;
+  if (d.t === 'move') {
+    if (d.moved) { changed(); return; }
+    if (d.wasSel && ui.sel.size > 1) { ui.sel = new Set([d.id]); render(); renderPanel(); }
+    const now = Date.now();
+    if (lastClick.id === d.id && now - lastClick.t < 380) focusName();
+    lastClick = { id: d.id, t: now };
+  } else if (d.t === 'pan' && !d.moved) {
+    if (ui.sel.size || ui.selU) { ui.sel.clear(); ui.selU = null; render(); renderPanel(); }
+  } else if (d.t === 'box') {
+    $('box').setAttribute('display', 'none');
+    if (d.ex != null) {
+      const x0 = Math.min(d.sx, d.ex), x1 = Math.max(d.sx, d.ex), y0 = Math.min(d.sy, d.ey), y1 = Math.max(d.sy, d.ey);
+      ui.sel = new Set(people().filter((p) => p.x >= x0 && p.x <= x1 && yOf(p) >= y0 && yOf(p) <= y1).map((p) => p.id));
+      ui.selU = null;
+      render(); renderPanel();
+    }
+  }
+}
+svg.addEventListener('pointerup', endDrag);
+svg.addEventListener('pointercancel', endDrag);
+svg.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (ui.pick) { endPick(); return; }
+  openContext(e);
+});
+svg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  hideCtx();
+  zoomAt(Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015)), e.clientX, e.clientY);
+}, { passive: false });
+function focusName() {
+  ui.tab = 'fiche';
+  renderPanel();
+  showPanel('right');
+  const i = panel.querySelector('[data-f="name"]');
+  if (i) { i.focus(); i.select(); }
+}
+
+/* Palette : glisser-déposer */
+const palDefs = {
+  M: { sex: 'M' }, F: { sex: 'F' }, U: { sex: 'U' },
+  preg: { sex: 'U', kind: 'preg' }, sab: { sex: 'U', kind: 'sab' }, top: { sex: 'U', kind: 'top' },
+};
+function addFromPalette(k, w) {
+  commit(() => {
+    const p = newPerson({ ...palDefs[k], x: snap(w.x), gen: Math.round(w.y / ROW) });
+    ui.sel = new Set([p.id]); ui.selU = null;
+  });
+}
+document.querySelectorAll('.pal').forEach((el) => {
+  el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', 'pal:' + el.dataset.pal); e.dataTransfer.effectAllowed = 'copy'; });
+  el.addEventListener('click', () => {
+    const c = viewCenter();
+    const taken = (x, g) => people().some((p) => p.gen === g && Math.abs(p.x - x) < GAP);
+    let x = snap(c.x); const g = Math.round(c.y / ROW);
+    while (taken(x, g)) x += GAP;
+    addFromPalette(el.dataset.pal, { x, y: g * ROW });
+  });
+});
+svg.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+svg.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const d = e.dataTransfer.getData('text/plain');
+  if (d && d.startsWith('pal:') && palDefs[d.slice(4)]) addFromPalette(d.slice(4), toWorld(e));
+});
+
+/* ═════════════ Mode « cliquer sur la cible » ═════════════ */
+const PICKMSG = {
+  partner: 'Cliquez sur le/la conjoint(e) à relier',
+  parents: 'Cliquez sur le trait d’union des parents, ou sur un parent',
+  twin: 'Cliquez sur le frère ou la sœur jumeau/jumelle',
+  kin: 'Cliquez sur le second individu',
+};
+function startPick(kind, p, extra) {
+  ui.pick = { kind, from: p.id, extra };
+  $('banner').querySelector('span').textContent = PICKMSG[kind];
+  $('banner').classList.add('show');
+  svg.classList.add('picking');
+}
+function endPick() {
+  ui.pick = null;
+  $('banner').classList.remove('show');
+  svg.classList.remove('picking');
+}
+function pickAt(pid, uId) {
+  const pk = ui.pick, from = P(pk.from);
+  endPick();
+  if (!from) return;
+  if (pk.kind === 'partner') {
+    if (!pid || pid === from.id) return toast('Cliquez sur un autre individu');
+    if (unionsOf(from.id).some((u) => partnerOf(u, from.id) === pid)) return toast('Ces deux individus forment déjà un couple');
+    const q = P(pid);
+    commit(() => {
+      const u = from.x <= q.x ? newUnion(from.id, pid) : newUnion(pid, from.id);
+      ui.sel.clear(); ui.selU = u.id;
+    });
+    if (phi(from.id, pid) > 0) toast(`Couple apparenté (φ = ${frac(phi(from.id, pid))}) : double trait ajouté`);
+  } else if (pk.kind === 'parents') {
+    let u = uId ? doc.unions[uId] : null;
+    if (!u && pid) {
+      if (pid === from.id) return;
+      const us = unionsOf(pid);
+      if (us.length > 1) return toast('Ce parent a plusieurs unions : cliquez directement sur le trait d’union du couple');
+      if (pid === from.id || isAncestor(from.id, pid)) return toast('Lien impossible : cela créerait une boucle');
+      commit(() => linkParents(from, us[0] || (addPartnerRaw(P(pid)), unionsOf(pid)[0])));
+      return;
+    }
+    if (!u) return toast('Cliquez sur un couple ou sur un parent');
+    if ([u.a, u.b].some((x) => x === from.id || isAncestor(from.id, x))) return toast('Lien impossible : cela créerait une boucle');
+    commit(() => linkParents(from, u));
+  } else if (pk.kind === 'twin') {
+    const q = pid && P(pid);
+    if (!q || q === from) return toast('Cliquez sur un autre individu');
+    if (!from.pu || q.pu !== from.pu) return toast('Les jumeaux doivent appartenir à la même fratrie');
+    commit(() => {
+      const t = from.tw || q.tw || uid('t');
+      if (pk.extra || !doc.twins[t]) doc.twins[t] = pk.extra || '?';
+      from.tw = q.tw = t;
+    });
+  } else if (pk.kind === 'kin') {
+    if (!pid) return toast('Cliquez sur un individu');
+    ui.calc.a = from.id; ui.calc.b = pid; ui.tab = 'calc';
+    renderPanel(); showPanel('right');
+    const k = $('kinCard');
+    if (k) k.scrollIntoView({ block: 'center' });
+  }
+}
+
+/* ═════════════ Menus contextuels ═════════════ */
+const ctx = $('ctx');
+function hideCtx() { ctx.innerHTML = ''; }
+function showMenu(items, x, y, level = 0, altX = null) {
+  [...ctx.children].forEach((m) => { if (+m.dataset.level >= level) m.remove(); });
+  const m = document.createElement('div');
+  m.className = 'menu';
+  m.dataset.level = level;
+  m.setAttribute('role', 'menu');
+  for (const it of items) {
+    if (!it) continue;
+    if (it.sep) { m.insertAdjacentHTML('beforeend', '<div class="msep"></div>'); continue; }
+    if (it.head) { const d = document.createElement('div'); d.className = 'mhead'; d.textContent = it.head; m.appendChild(d); continue; }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mi' + (it.disabled ? ' dis' : '') + (it.danger ? ' danger' : '');
+    b.setAttribute('role', 'menuitem');
+    const ck = it.checked ? '✓' : it.swatch ? `<span class="sw" style="background:${esc(it.swatch)}"></span>` : '';
+    b.innerHTML = `<span class="ck">${ck}</span><span class="lb">${esc(it.label)}</span>${it.sub ? '<span class="ar">▸</span>' : it.kbd ? `<span class="kb">${esc(it.kbd)}</span>` : ''}`;
+    const open = () => {
+      m.querySelectorAll('.mi.open').forEach((o) => o.classList.remove('open'));
+      if (it.sub && !it.disabled) {
+        b.classList.add('open');
+        const r = b.getBoundingClientRect();
+        showMenu(it.sub, r.right - 3, r.top - 6, level + 1, r.left + 3);
+      } else [...ctx.children].forEach((o) => { if (+o.dataset.level > level) o.remove(); });
+    };
+    b.addEventListener('mouseenter', open);
+    b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (it.disabled) return;
+      if (it.sub) { open(); return; }
+      hideCtx();
+      if (it.act) it.act();
+    });
+    m.appendChild(b);
+  }
+  ctx.appendChild(m);
+  const w = m.offsetWidth, h = m.offsetHeight;
+  let left = x, top = y;
+  if (left + w > innerWidth - 6) left = level && altX != null ? Math.max(6, altX - w) : Math.max(6, innerWidth - w - 6);
+  if (top + h > innerHeight - 6) top = Math.max(6, innerHeight - h - 6);
+  m.style.left = left + 'px';
+  m.style.top = top + 'px';
+}
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.menu') && !e.target.closest('#bExport')) hideCtx(); }, true);
+window.addEventListener('resize', hideCtx);
+window.addEventListener('blur', hideCtx);
+
+function childItems(add) {
+  return [
+    { label: 'Fils', act: () => add({ sex: 'M' }) },
+    { label: 'Fille', act: () => add({ sex: 'F' }) },
+    { label: 'Enfant (sexe inconnu)', act: () => add({ sex: 'U' }) },
+    { sep: 1 },
+    { label: 'Jumeaux', sub: [
+      { label: 'Monozygotes ♂♂', act: () => add({ twins: 'MZ', sex: 'M' }) },
+      { label: 'Monozygotes ♀♀', act: () => add({ twins: 'MZ', sex: 'F' }) },
+      { label: 'Dizygotes ♂♀', act: () => add({ twins: 'DZ', sexes: ['M', 'F'] }) },
+      { label: 'Dizygotes ♂♂', act: () => add({ twins: 'DZ', sex: 'M' }) },
+      { label: 'Dizygotes ♀♀', act: () => add({ twins: 'DZ', sex: 'F' }) },
+      { label: 'Zygotie inconnue', act: () => add({ twins: '?', sex: 'U' }) },
+    ] },
+    { sep: 1 },
+    { label: 'Grossesse en cours', act: () => add({ kind: 'preg' }) },
+    { label: 'Fausse couche (FCS)', act: () => add({ kind: 'sab' }) },
+    { label: 'IMG / IVG', act: () => add({ kind: 'top' }) },
+    { label: 'Mort-né(e)', act: () => add({ kind: 'stillbirth' }) },
+  ];
+}
+function statusItems(p) {
+  const T = targets();
+  const all = (f) => T.length > 0 && T.every(f);
+  return [
+    { label: 'Atteint(e)', sub: [
+      ...doc.phenos.map((ph) => ({ label: ph.name, swatch: ph.color, checked: all((q) => ph.id in q.aff), act: () => togglePheno(ph.id) })),
+      { sep: 1 },
+      { label: 'Nouveau phénotype…', act: newPheno },
+    ] },
+    { label: 'Porteur hétérozygote', kbd: 'H', checked: all((q) => q.carrier === 'carrier'), act: () => toggleCarrier('carrier') },
+    { label: 'Porteur présymptomatique', checked: all((q) => q.carrier === 'presym'), act: () => toggleCarrier('presym') },
+    { label: 'Décédé(e)', kbd: 'M', checked: all((q) => q.dead), act: toggleDead },
+    p && { label: 'Proposant(e)', kbd: 'X', checked: p.proband, act: () => toggleProband(p) },
+    { label: 'Consultant(e)', checked: all((q) => q.consultand), act: toggleConsultand },
+    { sep: 1 },
+    { label: 'Sexe', sub: [['M', 'Homme'], ['F', 'Femme'], ['U', 'Inconnu']].map(([v, t]) => ({ label: t, checked: all((q) => q.sex === v), act: () => setOnSel('sex', v) })) },
+    { label: 'Type', sub: KINDS.map(([v, t]) => ({ label: t, checked: all((q) => q.kind === v), act: () => setOnSel('kind', v) })) },
+    { label: 'Test génétique', sub: [['', 'Aucun'], ['E+', 'E+ · variant retrouvé'], ['E−', 'E− · variant non retrouvé'], ['E', 'E · évalué, non informatif']].map(([v, t]) => ({ label: t, checked: all((q) => q.test === v), act: () => setOnSel('test', v) })) },
+    { label: 'Adoption', sub: [['', 'Aucune'], ['in', 'Adopté(e) dans la famille'], ['out', 'Adopté(e) hors de la famille']].map(([v, t]) => ({ label: t, checked: all((q) => q.adopt === v), act: () => setOnSel('adopt', v) })) },
+    { label: 'Descendance', sub: [['', 'Non précisée'], ['none', 'Sans enfant (par choix)'], ['infertile', 'Infertilité']].map(([v, t]) => ({ label: t, checked: all((q) => q.nochild === v), act: () => setOnSel('nochild', v) })) },
+  ];
+}
+function personMenu(p) {
+  if (ui.sel.size > 1) {
+    return [
+      { head: `${ui.sel.size} individus sélectionnés` },
+      ...statusItems(null),
+      { sep: 1 },
+      { label: 'Copier', kbd: 'Ctrl+C', act: () => { copySel(); toast('Copié'); } },
+      { label: 'Dupliquer', kbd: 'Ctrl+D', act: () => { copySel(); paste(); } },
+      { label: 'Supprimer la sélection', kbd: 'Suppr', danger: 1, act: () => opDelete([...ui.sel], false) },
+    ];
+  }
+  const us = unionsOf(p.id);
+  const childEntry = us.length > 1
+    ? { label: 'Enfant', sub: us.map((u) => ({ label: 'avec ' + who(partnerOf(u, p.id)), sub: childItems((o) => opAddChildU(u, o)) })) }
+    : { label: 'Enfant', sub: childItems((o) => opAddChild(p, o)) };
+  return [
+    { head: who(p.id) },
+    { label: 'Ajouter les parents', kbd: 'P', disabled: !!p.pu, act: () => opAddParents(p) },
+    { label: 'Ajouter un(e) conjoint(e)', kbd: 'C', act: () => opAddPartner(p) },
+    { ...childEntry, label: 'Ajouter un enfant' },
+    { label: 'Ajouter un frère / une sœur', sub: [
+      { label: 'Frère', kbd: 'R', act: () => opAddSibling(p, { sex: 'M' }) },
+      { label: 'Sœur', kbd: 'S', act: () => opAddSibling(p, { sex: 'F' }) },
+      { label: 'Germain(e) de sexe inconnu', act: () => opAddSibling(p, { sex: 'U' }) },
+      { sep: 1 },
+      { label: 'Jumeau/jumelle monozygote', act: () => opAddSibling(p, { sex: p.sex, twins: 'MZ' }) },
+      { label: 'Jumeau dizygote ♂', act: () => opAddSibling(p, { sex: 'M', twins: 'DZ' }) },
+      { label: 'Jumelle dizygote ♀', act: () => opAddSibling(p, { sex: 'F', twins: 'DZ' }) },
+      { label: 'Jumeau, zygotie inconnue', act: () => opAddSibling(p, { sex: 'U', twins: '?' }) },
+    ] },
+    { sep: 1 },
+    ...statusItems(p),
+    { sep: 1 },
+    { label: 'Relier', sub: [
+      { label: 'à un(e) conjoint(e) existant(e)…', act: () => startPick('partner', p) },
+      { label: 'à des parents existants…', disabled: !!p.pu, act: () => startPick('parents', p) },
+      { label: 'comme jumeau/jumelle de…', disabled: !p.pu, sub: [['MZ', 'Monozygote'], ['DZ', 'Dizygote'], ['?', 'Zygotie inconnue']].map(([v, t]) => ({ label: t, act: () => startPick('twin', p, v) })) },
+      { sep: 1 },
+      { label: 'Détacher de ses parents', disabled: !p.pu, act: () => commit(() => { p.pu = null; p.tw = null; }) },
+      { label: 'Retirer de la gémellité', disabled: !p.tw, act: () => commit(() => { p.tw = null; }) },
+    ] },
+    { label: 'Consanguinité (F) de cet individu', disabled: !p.pu, act: () => openCalc('p:' + p.id) },
+    { label: 'Coefficient de parenté avec…', act: () => startPick('kin', p) },
+    { sep: 1 },
+    { label: 'Copier', kbd: 'Ctrl+C', act: () => { copySel(); toast('Copié'); } },
+    { label: 'Dupliquer', kbd: 'Ctrl+D', act: () => { copySel(); paste(); } },
+    { label: 'Supprimer', kbd: 'Suppr', danger: 1, act: () => opDelete([p.id], false) },
+    { label: 'Supprimer avec sa descendance', danger: 1, act: () => opDelete([p.id], true) },
+  ];
+}
+function unionMenu(u) {
+  const f = phi(u.a, u.b);
+  return [
+    { head: `Union ${lab(u.a)} × ${lab(u.b)}` },
+    { label: 'Ajouter un enfant', sub: childItems((o) => opAddChildU(u, o)) },
+    { sep: 1 },
+    { label: 'Consanguinité', sub: [
+      { label: `Automatique (${f > 0 ? 'apparentés, φ = ' + frac(f) : 'non apparentés'})`, checked: u.consang === 'auto', act: () => commit(() => { u.consang = 'auto'; }) },
+      { label: 'Toujours (double trait)', checked: u.consang === 'yes', act: () => commit(() => { u.consang = 'yes'; }) },
+      { label: 'Jamais (trait simple)', checked: u.consang === 'no', act: () => commit(() => { u.consang = 'no'; }) },
+    ] },
+    { label: 'Séparés / divorcés', checked: u.sep, act: () => commit(() => { u.sep = !u.sep; }) },
+    { label: 'Étiquette du lien…', act: () => { ui.selU = u.id; ui.sel.clear(); ui.tab = 'fiche'; render(); renderPanel(); showPanel('right'); const i = panel.querySelector('[data-uf="label"]'); if (i) i.focus(); } },
+    { label: 'F de leur enfant', act: () => openCalc('u:' + u.id) },
+    { sep: 1 },
+    { label: 'Supprimer l’union', danger: 1, act: () => opDeleteUnion(u) },
+  ];
+}
+function canvasMenu(w) {
+  const at = { x: snap(w.x), y: Math.round(w.y / ROW) * ROW };
+  return [
+    { head: 'Feuille' },
+    { label: 'Ajouter ici', sub: Object.entries({ M: 'Homme', F: 'Femme', U: 'Sexe inconnu', preg: 'Grossesse en cours', sab: 'Fausse couche', top: 'IMG / IVG' })
+      .map(([k, t]) => ({ label: t, act: () => addFromPalette(k, at) })) },
+    { label: 'Coller ici', kbd: 'Ctrl+V', disabled: !ui.clip, act: () => paste(at) },
+    { sep: 1 },
+    { label: 'Tout sélectionner', kbd: 'Ctrl+A', act: selectAll },
+    { label: 'Organiser l’arbre', kbd: 'O', act: organise },
+    { label: 'Ajuster à l’écran', kbd: '0', act: fit },
+    { sep: 1 },
+    { label: 'Nouveau phénotype…', act: newPheno },
+    { label: ui.anon ? 'Désactiver le mode anonyme' : 'Mode anonyme', act: toggleAnon },
+  ];
+}
+function openContext(e) {
+  const t = e.target && e.target.closest ? e.target : null;
+  const pn = t && t.closest('.pn'), uh = t && t.closest('[data-uid]');
+  if (pn) {
+    const id = pn.dataset.pid;
+    if (!ui.sel.has(id)) { ui.sel = new Set([id]); ui.selU = null; render(); renderPanel(); }
+    showMenu(personMenu(P(id)), e.clientX, e.clientY);
+  } else if (uh) {
+    ui.selU = uh.dataset.uid; ui.sel.clear();
+    render(); renderPanel();
+    showMenu(unionMenu(doc.unions[ui.selU]), e.clientX, e.clientY);
+  } else showMenu(canvasMenu(toWorld(e)), e.clientX, e.clientY);
+}
+function selectAll() { ui.sel = new Set(people().map((p) => p.id)); ui.selU = null; render(); renderPanel(); }
+function openCalc(key) { ui.calc.f = key; ui.tab = 'calc'; renderPanel(); showPanel('right'); panel.scrollTop = 0; }
+
+/* ═════════════ Panneau de droite ═════════════ */
+const opts = (list, cur) => list.map(([v, t]) => `<option value="${esc(v)}"${String(cur) === String(v) ? ' selected' : ''}>${esc(t)}</option>`).join('');
+const selPerson = () => (ui.sel.size === 1 ? P([...ui.sel][0]) : null);
+const linkP = (id) => `<button class="lnk" data-selp="${id}">${esc(who(id))}</button>`;
+
+function renderPanel() {
+  computeNumbering();
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
+  const key = ui.tab + '|' + [...ui.sel].join(',') + '|' + (ui.selU || '');
+  const st = key === ui.panelKey ? panel.scrollTop : 0;
+  ui.panelKey = key;
+  editing = false;
+  panel.innerHTML = ui.tab === 'calc' ? calcHtml() : ficheHtml();
+  panel.scrollTop = st;
+  renderPhList();
+  if (document.activeElement !== $('docTitle')) $('docTitle').value = doc.meta.title || '';
+}
+function ficheHtml() {
+  const p = selPerson();
+  if (p) return personForm(p);
+  if (ui.sel.size > 1) return multiForm();
+  if (ui.selU && doc.unions[ui.selU]) return unionForm(doc.unions[ui.selU]);
+  return docForm();
+}
+function personForm(p) {
+  const pr = parentsOf(p.id);
+  const us = unionsOf(p.id);
+  const rel = [];
+  if (pr) rel.push(`Enfant de ${linkP(pr[0])} × ${linkP(pr[1])}`);
+  us.forEach((u) => rel.push(`<button class="lnk" data-selu="${u.id}">Union</button> avec ${linkP(partnerOf(u, p.id))} · ${childrenOf(u.id).length} enfant(s)`));
+  const T = (label, f, ph = '', cls = '') => `<label class="field"><span>${label}</span><input class="inp ${cls}" data-f="${f}" value="${esc(p[f])}" placeholder="${esc(ph)}"></label>`;
+  return `
+  <div class="phead">${miniSymbol(p, 44)}<div><div class="pid">${lab(p.id)}</div><div class="small muted">${p.proband ? 'Proposant(e) · ' : ''}${KINDS.find((k) => k[0] === p.kind)[1]}${p.pu ? ` · F = ${frac(Fof(p.id))}` : ''}</div></div></div>
+  ${T('Prénom / nom' + (ui.anon ? ' <i>(masqué)</i>' : ''), 'name', 'ex. Amina B.')}
+  <div class="field"><span>Sexe</span><div class="seg">${[['M', 'Homme'], ['F', 'Femme'], ['U', 'Inconnu']].map(([v, t]) => `<button data-set="sex" data-v="${v}" class="${p.sex === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+  <label class="field"><span>Type</span><select class="inp" data-f="kind">${opts(KINDS, p.kind)}</select></label>
+  ${p.kind !== 'person' ? T('Âge gestationnel (SA)', 'sa', 'ex. 12') : ''}
+  <div class="grid2">${T('Année de naissance', 'birth', 'ex. 1987')}${T('Âge', 'age', 'ex. 38 ou 6 mois')}</div>
+  <label class="chk"><input type="checkbox" data-f="dead"${p.dead ? ' checked' : ''}> Décédé(e)</label>
+  ${p.dead ? `<div class="grid2">${T('Âge au décès', 'deathAge', 'ex. 62')}${T('Cause', 'cause', 'ex. K côlon')}</div>` : ''}
+  ${T('Nombre d’individus (n dans le symbole)', 'count', 'ex. 3 ou n')}
+
+  <h3 class="sec">Phénotypes</h3>
+  ${doc.phenos.map((ph) => `<div class="affrow"><label class="chk"><input type="checkbox" data-aff="${ph.id}"${ph.id in p.aff ? ' checked' : ''}><span class="sw" style="background:${esc(ph.color)}"></span>${esc(ph.name)}</label>${ph.id in p.aff ? `<input class="inp" data-affd="${ph.id}" value="${esc(p.aff[ph.id])}" placeholder="Précision affichée (ex. K sein 42 a)">` : ''}</div>`).join('')}
+  <button class="btn chip" data-act="newPheno">+ Phénotype</button>
+
+  <h3 class="sec">Génétique</h3>
+  <label class="field"><span>Statut</span><select class="inp" data-f="carrier">${opts([['', '—'], ['carrier', 'Porteur hétérozygote (point central)'], ['presym', 'Porteur présymptomatique (trait vertical)']], p.carrier)}</select></label>
+  ${T('Génotype', 'geno', 'ex. c.1521_1523del/+', 'mono')}
+  <label class="field"><span>Résultat du test</span><select class="inp" data-f="test">${opts([['', '—'], ['E+', 'E+ · variant retrouvé'], ['E−', 'E− · variant non retrouvé'], ['E', 'E · évalué, non informatif']], p.test)}</select></label>
+
+  <h3 class="sec">Statuts</h3>
+  <label class="chk"><input type="checkbox" data-f="proband"${p.proband ? ' checked' : ''}> Proposant(e) — flèche + P</label>
+  <label class="chk"><input type="checkbox" data-f="consultand"${p.consultand ? ' checked' : ''}> Consultant(e) — flèche</label>
+  <label class="field"><span>Adoption</span><select class="inp" data-f="adopt">${opts([['', '—'], ['in', 'Adopté(e) dans la famille (pointillés)'], ['out', 'Adopté(e) hors de la famille']], p.adopt)}</select></label>
+  <div class="grid2"><label class="field"><span>Descendance</span><select class="inp" data-f="nochild">${opts([['', '—'], ['none', 'Sans enfant'], ['infertile', 'Infertilité']], p.nochild)}</select></label>${T('Raison', 'nochildNote', 'ex. azoospermie')}</div>
+  ${p.tw ? `<label class="field"><span>Gémellité</span><select class="inp" data-twin="1">${opts([['MZ', 'Monozygotes'], ['DZ', 'Dizygotes'], ['?', 'Zygotie inconnue']], doc.twins[p.tw])}</select></label>` : ''}
+
+  <h3 class="sec">Notes</h3>
+  <textarea class="inp" data-f="notes" rows="3" placeholder="Affichées sous le symbole, masquées en mode anonyme">${esc(p.notes)}</textarea>
+
+  ${rel.length ? `<h3 class="sec">Liens</h3><div class="small" style="display:grid;gap:4px">${rel.map((r) => `<div>${r}</div>`).join('')}</div>` : ''}
+
+  <h3 class="sec">Ajouter</h3>
+  <div class="chips">
+    <button class="btn chip" data-add="parents"${p.pu ? ' disabled' : ''}>Parents</button>
+    <button class="btn chip" data-add="partner">Conjoint(e)</button>
+    <button class="btn chip" data-add="son">Fils</button>
+    <button class="btn chip" data-add="daughter">Fille</button>
+    <button class="btn chip" data-add="brother">Frère</button>
+    <button class="btn chip" data-add="sister">Sœur</button>
+  </div>
+  <div class="chips" style="margin-top:14px">
+    <button class="btn chip danger" data-act="del">Supprimer</button>
+    <button class="btn chip danger" data-act="delDesc">Supprimer + descendance</button>
+  </div>`;
+}
+function multiForm() {
+  return `
+  <div class="phead"><div><div class="pid">${ui.sel.size} individus</div><div class="small muted">${targets().map((p) => lab(p.id)).join(', ')}</div></div></div>
+  <p class="small muted">Les statuts s’appliquent à toute la sélection (aussi via clic droit).</p>
+  <h3 class="sec">Phénotypes</h3>
+  <div class="chips">${doc.phenos.map((ph) => `<button class="btn chip" data-bulk="ph:${ph.id}"><span class="sw" style="background:${esc(ph.color)}"></span>${esc(ph.name)}</button>`).join('')}</div>
+  <h3 class="sec">Statuts</h3>
+  <div class="chips">
+    <button class="btn chip" data-bulk="carrier">Porteur hétérozygote</button>
+    <button class="btn chip" data-bulk="presym">Présymptomatique</button>
+    <button class="btn chip" data-bulk="dead">Décédé(e)</button>
+    <button class="btn chip" data-bulk="consultand">Consultant(e)</button>
+  </div>
+  <h3 class="sec">Sélection</h3>
+  <div class="chips">
+    <button class="btn chip" data-act="dup">Dupliquer</button>
+    <button class="btn chip danger" data-act="delSel">Supprimer</button>
+  </div>`;
+}
+function unionForm(u) {
+  const f = phi(u.a, u.b), kids = childrenOf(u.id);
+  return `
+  <div class="phead"><svg width="44" height="44" viewBox="0 0 44 44"><rect x="2" y="13" width="16" height="16" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="34" cy="21" r="8" fill="#fff" stroke="${INK}" stroke-width="2"/><path d="M18 ${consangOf(u) ? '19H26M18 23H26' : '21H26'}" stroke="${INK}" stroke-width="2"/></svg>
+    <div><div class="pid">Union</div><div class="small">${linkP(u.a)} × ${linkP(u.b)}</div></div></div>
+  <label class="field"><span>Consanguinité</span><select class="inp" data-uf="consang">${opts([['auto', `Automatique — ${f > 0 ? 'apparentés (φ = ' + frac(f) + ')' : 'non apparentés dans l’arbre'}`], ['yes', 'Toujours (double trait)'], ['no', 'Jamais (trait simple)']], u.consang)}</select></label>
+  <label class="field"><span>Étiquette du lien (au-dessus du trait)</span><input class="inp" data-uf="label" value="${esc(u.label)}" placeholder="ex. cousins germains"></label>
+  <label class="chk"><input type="checkbox" data-uf="sep"${u.sep ? ' checked' : ''}> Séparés / divorcés</label>
+  <div class="card" style="margin-top:12px"><div class="small muted">Enfant de ce couple</div><div class="big">F = ${frac(f)}</div><div class="small muted">${f > 0 ? `${pct(f)} · parents apparentés au ${degTxt(degreeOf(f))}` : 'Aucun ancêtre commun dans l’arbre'}</div>
+  <div style="margin-top:8px"><button class="btn chip" data-act="calcU">Détail du calcul</button></div></div>
+  <h3 class="sec">Enfants (${kids.length})</h3>
+  <div class="small" style="display:grid;gap:3px">${kids.map((k) => `<div>${linkP(k.id)}</div>`).join('') || '<span class="muted">Aucun</span>'}</div>
+  <h3 class="sec">Ajouter un enfant</h3>
+  <div class="chips">
+    <button class="btn chip" data-addu="M">Fils</button><button class="btn chip" data-addu="F">Fille</button><button class="btn chip" data-addu="U">Sexe inconnu</button>
+    <button class="btn chip" data-addu="preg">Grossesse</button><button class="btn chip" data-addu="sab">FCS</button><button class="btn chip" data-addu="top">IMG</button><button class="btn chip" data-addu="stillbirth">Mort-né</button>
+    <button class="btn chip" data-addu="mz">Jumeaux MZ</button><button class="btn chip" data-addu="dz">Jumeaux DZ</button>
+  </div>
+  <div class="chips" style="margin-top:14px"><button class="btn chip danger" data-act="delU">Supprimer l’union</button></div>`;
+}
+function docForm() {
+  const m = doc.meta, ps = people();
+  const nAff = ps.filter((p) => Object.keys(p.aff).length).length;
+  const nCons = unions().filter(consangOf).length;
+  return `
+  <h3 class="sec">Document</h3>
+  <label class="field"><span>Titre</span><input class="inp" data-m="title" value="${esc(m.title)}" placeholder="ex. Famille B."></label>
+  <label class="field"><span>Indication / motif</span><input class="inp" data-m="indication" value="${esc(m.indication)}" placeholder="ex. Mucoviscidose — conseil génétique"></label>
+  <div class="grid2"><label class="field"><span>Établi par</span><input class="inp" data-m="author" value="${esc(m.author)}"></label>
+  <label class="field"><span>Date</span><input class="inp" type="date" data-m="date" value="${esc(m.date)}"></label></div>
+  <label class="field"><span>Notes</span><textarea class="inp" data-m="notes" rows="3">${esc(m.notes)}</textarea></label>
+  <div class="card"><div class="kv">
+    <b>${ps.length}</b><span>individu(s)</span>
+    <b>${NUM.gens.length}</b><span>génération(s)</span>
+    <b>${nAff}</b><span>atteint(s)</span>
+    <b>${nCons}</b><span>union(s) consanguine(s)</span>
+  </div></div>
+  <h3 class="sec">Prise en main</h3>
+  <ul class="tips">
+    <li>Sélectionnez un symbole pour afficher sa fiche ici.</li>
+    <li><b>Clic droit</b> sur un symbole : ajouter parents, conjoint, enfants, frères et sœurs, jumeaux, grossesses…</li>
+    <li>Clic droit sur un <b>trait d’union</b> : enfants du couple, consanguinité, séparation.</li>
+    <li>Un couple apparenté reçoit automatiquement le <b>double trait</b>.</li>
+    <li><b>Organiser</b> remet l’arbre en ordre en gardant l’ordre gauche–droite.</li>
+  </ul>`;
+}
+
+/* Onglet Consanguinité */
+function calcHtml() {
+  const ps = people();
+  const fTargets = [
+    ...ps.filter((p) => p.pu).sort((a, b) => (lab(a.id) < lab(b.id) ? -1 : 1)).map((p) => ['p:' + p.id, who(p.id) + (p.proband ? ' (proposant)' : '')]),
+    ...unions().map((u) => ['u:' + u.id, `Enfant à naître de ${lab(u.a)} × ${lab(u.b)}`]),
+  ];
+  const valid = (k) => fTargets.some(([v]) => v === k);
+  if (!valid(ui.calc.f)) {
+    const pb = ps.find((p) => p.proband && p.pu);
+    const cu = unions().find((u) => phi(u.a, u.b) > 0);
+    ui.calc.f = pb ? 'p:' + pb.id : cu ? 'u:' + cu.id : (fTargets[0] || [''])[0];
+  }
+  let fBlock = '<p class="small muted">Ajoutez des parents à un individu pour calculer son coefficient de consanguinité.</p>';
+  if (ui.calc.f) {
+    const [kind, id] = ui.calc.f.split(':');
+    const pair = kind === 'p' ? parentsOf(id) : [doc.unions[id].a, doc.unions[id].b];
+    const F = phi(pair[0], pair[1]);
+    const { res, truncated } = kinPaths(pair[0], pair[1]);
+    const sum = res.reduce((t, r) => t + r.c, 0);
+    const path = (r) => [...r.pa.map(lab), ...r.pb.slice(0, -1).reverse().map(lab)].map((s, i, a) => (i === r.pa.length - 1 ? `<b>${s}</b>` : s)).join(' – ');
+    fBlock = `
+    <div class="card">
+      <div class="big">F = ${frac(F)}</div>
+      <div class="small muted">${fr(F, 4)} · ${pct(F)}</div>
+      <div class="small" style="margin-top:6px">${F > 0 ? `Parents (${lab(pair[0])} × ${lab(pair[1])}) apparentés au <b>${degTxt(degreeOf(F))}</b>${EXAMPLES[Math.round(1 / F)] && Math.abs(1 / F - Math.round(1 / F)) < 1e-9 ? ` — ex. ${EXAMPLES[Math.round(1 / F)]}` : ''}.` : 'Aucun ancêtre commun dans l’arbre : F = 0.'}</div>
+      ${res.length ? `
+      <table class="paths"><thead><tr><th>Ancêtre commun</th><th>Boucle</th><th>n</th><th>Contribution</th></tr></thead><tbody>
+      ${res.slice(0, 40).map((r) => `<tr><td>${esc(lab(r.anc))}${Fof(r.anc) > 0 ? ` <span class="muted">(F<sub>A</sub> = ${frac(Fof(r.anc))})</span>` : ''}</td><td>${path(r)}</td><td>${r.n}</td><td>${frac(r.c)}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="small muted" style="margin:6px 0 0">F = Σ (½)<sup>n</sup> (1 + F<sub>A</sub>) — n : individus de la boucle, ancêtre compris.${res.length > 40 ? ` ${res.length - 40} autre(s) chemin(s) non affiché(s).` : ''}${truncated ? ' Énumération tronquée (arbre très bouclé) : la valeur de F reste exacte.' : Math.abs(sum - F) > 1e-12 ? '' : ''}</p>` : ''}
+      <div class="chips" style="margin-top:10px">
+        ${res.length ? `<button class="btn chip${ui.hl.size ? ' on' : ''}" data-act="hl">${ui.hl.size ? 'Effacer le surlignage' : 'Surligner les boucles'}</button>` : ''}
+        <button class="btn chip" data-act="useF" data-v="${F}">Utiliser pour le risque ↓</button>
+      </div>
+    </div>`;
+  }
+  const allP = ps.slice().sort((a, b) => (lab(a.id) < lab(b.id) ? -1 : 1)).map((p) => [p.id, who(p.id)]);
+  if (!P(ui.calc.a)) ui.calc.a = (allP[0] || [''])[0];
+  if (!P(ui.calc.b)) ui.calc.b = (allP[1] || allP[0] || [''])[0];
+  let kin = '';
+  if (ui.calc.a && ui.calc.b) {
+    const f = phi(ui.calc.a, ui.calc.b), same = ui.calc.a === ui.calc.b;
+    const ex = f > 0 && Math.abs(1 / f - Math.round(1 / f)) < 1e-9 ? EXAMPLES[Math.round(1 / f)] : '';
+    kin = same ? '<p class="small muted">Choisissez deux individus différents.</p>' : `
+      <div class="big">φ = ${frac(f)}</div>
+      <div class="small muted">${fr(f, 4)} · ADN partagé attendu ≈ ${pct(2 * f)}</div>
+      <div class="small" style="margin-top:6px">${f > 0 ? `Apparentés au <b>${degTxt(degreeOf(f))}</b>${ex ? ` — ex. ${ex}` : ''}.<br>Un enfant de ces deux individus aurait F = ${frac(f)}.` : 'Non apparentés dans l’arbre.'}</div>`;
+  }
+  return `
+  <h3 class="sec">Coefficient de consanguinité (F)</h3>
+  <label class="field"><span>Individu ou enfant à naître</span><select class="inp" data-c="f">${opts(fTargets, ui.calc.f)}</select></label>
+  ${fBlock}
+
+  <h3 class="sec">Parenté entre deux individus</h3>
+  <div class="grid2">
+    <label class="field"><span>Individu A</span><select class="inp" data-c="a">${opts(allP, ui.calc.a)}</select></label>
+    <label class="field"><span>Individu B</span><select class="inp" data-c="b">${opts(allP, ui.calc.b)}</select></label>
+  </div>
+  <div class="card" id="kinCard">${kin || '<span class="small muted">Ajoutez au moins deux individus.</span>'}</div>
+  <p class="small muted" style="margin-top:-4px">Astuce : clic droit sur un symbole › « Coefficient de parenté avec… ».</p>
+
+  <h3 class="sec">Risque pour une maladie récessive</h3>
+  <div class="grid2">
+    <label class="field"><span>F de l’enfant</span><input class="inp mono" data-c="F" value="${esc(ui.calc.F)}" placeholder="ex. 1/16"></label>
+    <label class="field"><span>Fréquence connue</span><select class="inp" data-c="mode">${opts([['carrier', 'Porteurs (1 / x)'], ['q', 'Allèle q'], ['prev', 'Prévalence (1 / x)']], ui.calc.mode)}</select></label>
+  </div>
+  <label class="field"><span>${{ carrier: 'Fréquence des porteurs hétérozygotes', q: 'Fréquence allélique q', prev: 'Prévalence de la maladie' }[ui.calc.mode]}</span><input class="inp mono" data-c="val" value="${esc(ui.calc.val)}" placeholder="ex. 1/50 ou 0,02"></label>
+  <label class="chk"><input type="checkbox" data-c="carrier"${ui.calc.carrier ? ' checked' : ''}> L’un des deux parents est porteur connu</label>
+  <div id="riskOut">${riskHtml()}</div>
+  <p class="note">Wright (1922) ; Bennett et al., <i>J Genet Couns</i> 2002 (cousins germains : +1,7 à 2,8 % de risque d’anomalie congénitale au-dessus du risque de base ≈ 3 %) ; nomenclature : Bennett et al., <i>J Genet Couns</i> 2022.</p>`;
+}
+function riskHtml() {
+  const c = ui.calc;
+  const F = parseNum(c.F), v = parseNum(c.val);
+  if (!(F >= 0 && F < 1)) return '<div class="card small muted">Indiquez F (ex. <span class="mono">1/16</span>) — ou utilisez le bouton « Utiliser pour le risque ».</div>';
+  if (!(v > 0 && v < 1)) return '<div class="card small muted">Indiquez une fréquence entre 0 et 1 (ex. <span class="mono">1/50</span>).</div>';
+  let q;
+  if (c.mode === 'q') q = v;
+  else if (c.mode === 'prev') q = Math.sqrt(v);
+  else { if (v > 0.5) return '<div class="card small muted">Fréquence des porteurs trop élevée (max. 1/2).</div>'; q = (1 - Math.sqrt(1 - 2 * v)) / 2; }
+  const het = 2 * q * (1 - q);
+  let base, risk, lines;
+  if (c.carrier) {
+    base = het / 4;
+    const pc = 2 * F + (1 - 2 * F) * het;
+    risk = pc / 4;
+    lines = `<b>Probabilité que l’autre parent soit porteur</b><span>${pct(pc)} (≈ ${oneIn(pc)}) — dont ${pct(2 * F)} par ascendance commune</span>`;
+  } else {
+    base = q * q;
+    risk = q * q + F * q * (1 - q);
+    lines = '';
+  }
+  return `<div class="card">
+    <div class="small muted">Risque qu’un enfant soit atteint</div>
+    <div class="big">${oneIn(risk)}</div>
+    <div class="small muted">${pct(risk)}</div>
+    <div class="kv" style="margin-top:10px">
+      <b>Sans consanguinité</b><span>${oneIn(base)} (${pct(base)})</span>
+      <b>Risque relatif</b><span>× ${fr(risk / base, 3)}</span>
+      <b>q · porteurs</b><span>${fr(q, 3)} · ${oneIn(het)}</span>
+      ${lines}
+    </div>
+    <p class="small muted" style="margin:8px 0 0">${c.carrier ? 'Risque = ¼ × P(autre parent porteur), avec P = 2F + (1 − 2F) × 2pq.' : 'Risque = q² + F·p·q (Wright).'}</p>
+  </div>`;
+}
+
+/* Événements du panneau */
+const isText = (t) => t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['checkbox', 'radio', 'color'].includes(t.type));
+panel.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.c) {
+    if (isText(t)) { ui.calc[t.dataset.c] = t.value; const o = $('riskOut'); if (o) o.innerHTML = riskHtml(); }
+    return;
+  }
+  if (!isText(t)) return;
+  const p = selPerson();
+  if (t.dataset.f && p) liveEdit(() => { p[t.dataset.f] = t.value; });
+  else if (t.dataset.affd && p) liveEdit(() => { p.aff[t.dataset.affd] = t.value; });
+  else if (t.dataset.uf && doc.unions[ui.selU]) liveEdit(() => { doc.unions[ui.selU][t.dataset.uf] = t.value; });
+  else if (t.dataset.m) {
+    liveEdit(() => { doc.meta[t.dataset.m] = t.value; });
+    if (t.dataset.m === 'title') $('docTitle').value = t.value;
+  }
+});
+panel.addEventListener('change', (e) => {
+  const t = e.target;
+  if (isText(t)) return;
+  const val = t.type === 'checkbox' ? t.checked : t.value;
+  if (t.dataset.c) { ui.calc[t.dataset.c] = val; renderPanel(); return; }
+  const p = selPerson(), u = doc.unions[ui.selU];
+  if (t.dataset.f && p) {
+    commit(() => {
+      p[t.dataset.f] = val;
+      if (t.dataset.f === 'proband' && val) people().forEach((q) => { if (q !== p) q.proband = false; });
+    });
+  } else if (t.dataset.aff && p) {
+    commit(() => { if (val) p.aff[t.dataset.aff] = ''; else delete p.aff[t.dataset.aff]; });
+  } else if (t.dataset.twin && p && p.tw) {
+    commit(() => { doc.twins[p.tw] = val; });
+  } else if (t.dataset.uf && u) {
+    commit(() => { u[t.dataset.uf] = val; });
+  }
+});
+panel.addEventListener('focusout', () => { editing = false; });
+panel.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-set],[data-add],[data-addu],[data-act],[data-selp],[data-selu],[data-bulk]');
+  if (!t || t.disabled) return;
+  const p = selPerson(), u = doc.unions[ui.selU];
+  if (t.dataset.set && p) commit(() => { p[t.dataset.set] = t.dataset.v; });
+  else if (t.dataset.selp) { ui.sel = new Set([t.dataset.selp]); ui.selU = null; ui.tab = 'fiche'; render(); renderPanel(); }
+  else if (t.dataset.selu) { ui.selU = t.dataset.selu; ui.sel.clear(); ui.tab = 'fiche'; render(); renderPanel(); }
+  else if (t.dataset.add && p) {
+    ({ parents: () => opAddParents(p), partner: () => opAddPartner(p), son: () => opAddChild(p, { sex: 'M' }), daughter: () => opAddChild(p, { sex: 'F' }),
+      brother: () => opAddSibling(p, { sex: 'M' }), sister: () => opAddSibling(p, { sex: 'F' }) })[t.dataset.add]();
+  } else if (t.dataset.addu && u) {
+    const k = t.dataset.addu;
+    opAddChildU(u, k === 'mz' ? { twins: 'MZ', sex: 'U' } : k === 'dz' ? { twins: 'DZ', sexes: ['M', 'F'] }
+      : ['M', 'F', 'U'].includes(k) ? { sex: k } : { kind: k });
+  } else if (t.dataset.bulk) {
+    const b = t.dataset.bulk;
+    if (b.startsWith('ph:')) togglePheno(b.slice(3));
+    else if (b === 'dead') toggleDead();
+    else if (b === 'consultand') toggleConsultand();
+    else toggleCarrier(b);
+  } else if (t.dataset.act) {
+    const a = t.dataset.act;
+    if (a === 'newPheno') newPheno();
+    else if (a === 'del' && p) opDelete([p.id], false);
+    else if (a === 'delDesc' && p) opDelete([p.id], true);
+    else if (a === 'delSel') opDelete([...ui.sel], false);
+    else if (a === 'dup') { copySel(); paste(); }
+    else if (a === 'delU' && u) opDeleteUnion(u);
+    else if (a === 'calcU' && u) openCalc('u:' + u.id);
+    else if (a === 'useF') { ui.calc.F = frac(+t.dataset.v); renderPanel(); const o = $('riskOut'); if (o) o.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    else if (a === 'hl') {
+      if (ui.hl.size) ui.hl.clear();
+      else {
+        const [kind, id] = ui.calc.f.split(':');
+        const pair = kind === 'p' ? parentsOf(id) : [doc.unions[id].a, doc.unions[id].b];
+        kinPaths(pair[0], pair[1]).res.forEach((r) => [...r.pa, ...r.pb].forEach((x) => ui.hl.add(x)));
+      }
+      render(); renderPanel();
+    }
+  }
+});
+document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => { ui.tab = b.dataset.tab; renderPanel(); }));
+
+/* Panneau de gauche : phénotypes */
+function renderPhList() {
+  const el = $('phList');
+  if (el.contains(document.activeElement)) return;
+  const cnt = (id) => people().filter((p) => id in p.aff).length;
+  el.innerHTML = doc.phenos.map((ph) => `
+    <div class="ph">
+      <input type="color" value="${esc(ph.color)}" data-phc="${ph.id}" title="Couleur">
+      <input class="inp" value="${esc(ph.name)}" data-phn="${ph.id}" aria-label="Nom du phénotype">
+      <span class="cnt" title="Individus atteints">${cnt(ph.id)}</span>
+      <button class="btn icon xs" data-pha="${ph.id}" title="Marquer / démarquer la sélection">✓</button>
+      <button class="btn icon xs" data-phd="${ph.id}" title="Supprimer ce phénotype">×</button>
+    </div>`).join('');
+}
+const phList = $('phList');
+phList.addEventListener('input', (e) => {
+  const id = e.target.dataset.phn;
+  if (id) liveEdit(() => { doc.phenos.find((ph) => ph.id === id).name = e.target.value; });
+});
+phList.addEventListener('change', (e) => {
+  const id = e.target.dataset.phc;
+  if (id) { const v = e.target.value; e.target.blur(); commit(() => { doc.phenos.find((ph) => ph.id === id).color = v; }); }
+});
+phList.addEventListener('focusout', () => { editing = false; setTimeout(() => { if (!phList.contains(document.activeElement)) { renderPhList(); if (ui.tab === 'fiche') renderPanel(); } }, 0); });
+phList.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-pha]'), d = e.target.closest('[data-phd]');
+  if (a) {
+    if (!ui.sel.size) return toast('Sélectionnez d’abord un ou plusieurs individus');
+    togglePheno(a.dataset.pha);
+  } else if (d) {
+    const id = d.dataset.phd, n = people().filter((p) => id in p.aff).length;
+    if (doc.phenos.length === 1) return toast('Gardez au moins un phénotype');
+    if (n && !confirm(`Ce phénotype est attribué à ${n} individu(s). Le supprimer ?`)) return;
+    commit(() => { doc.phenos = doc.phenos.filter((ph) => ph.id !== id); });
+  }
+});
+$('addPh').addEventListener('click', newPheno);
+
+/* ═════════════ Export ═════════════ */
+function legendItems() {
+  const ps = people(), it = [];
+  for (const ph of doc.phenos) if (ps.some((p) => ph.id in p.aff)) it.push({ k: 'ph', c: ph.color, t: ph.name });
+  if (ps.some((p) => p.carrier === 'carrier')) it.push({ k: 'carrier', t: 'Porteur hétérozygote' });
+  if (ps.some((p) => p.carrier === 'presym')) it.push({ k: 'presym', t: 'Porteur présymptomatique' });
+  if (ps.some((p) => p.dead)) it.push({ k: 'dead', t: 'Décédé(e)' });
+  if (ps.some((p) => p.proband)) it.push({ k: 'proband', t: 'Proposant(e)' });
+  if (unions().some(consangOf)) it.push({ k: 'cons', t: 'Union consanguine' });
+  if (ps.some((p) => p.test === 'E+' || p.test === 'E−')) it.push({ k: 'txt', s: 'E+ / E−', t: 'variant retrouvé / non retrouvé' });
+  return it;
+}
+function legendIcon(i) {
+  const sq = (f) => `<rect x="-8" y="-8" width="16" height="16" fill="${f}" stroke="${INK}" stroke-width="1.4"/>`;
+  switch (i.k) {
+    case 'ph': return sq(i.c);
+    case 'carrier': return sq('#fff') + `<circle r="2.6" fill="${INK}"/>`;
+    case 'presym': return sq('#fff') + `<line x1="0" y1="-8" x2="0" y2="8" stroke="${INK}" stroke-width="2"/>`;
+    case 'dead': return sq('#fff') + `<line x1="-11" y1="11" x2="11" y2="-11" stroke="${INK}" stroke-width="1.4"/>`;
+    case 'proband': return `<line x1="-10" y1="8" x2="2" y2="-4" stroke="${INK}" stroke-width="1.6"/><polygon points="6,-8 -1,-4 2,-1" fill="${INK}"/>`;
+    case 'cons': return `<path d="M-11,-2.5H11M-11,2.5H11" stroke="${INK}" stroke-width="1.4"/>`;
+    default: return `<text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="${INK}">${esc(i.s)}</text>`;
+  }
+}
+function exportSvg() {
+  const body = drawPedigree({ ui: false, anon: ui.anon, ids: ui.ids, guides: false });
+  const m = $('measure');
+  m.innerHTML = `<g>${body}</g>`;
+  const bb = people().length ? m.firstChild.getBBox() : { x: 0, y: 0, width: 200, height: 60 };
+  m.innerHTML = '';
+  const pad = 28, meta = doc.meta;
+  const W = Math.ceil(Math.max(bb.width + pad * 2, 560));
+  const headH = meta.indication ? 68 : 50;
+  const items = legendItems();
+  const rows = [];
+  let row = [], x = 0;
+  const avail = W - pad * 2;
+  for (const i of items) {
+    const w = 26 + ((i.s ? i.s.length * 6 + 6 : 0) + i.t.length * 6.2) + 22;
+    if (x + w > avail && row.length) { rows.push(row); row = []; x = 0; }
+    row.push({ ...i, x, w }); x += w;
+  }
+  if (row.length) rows.push(row);
+  const legH = rows.length ? rows.length * 24 + 14 : 0;
+  const Ht = Math.ceil(headH + bb.height + pad * 1.5 + legH + 26);
+  const ox = (W - bb.width) / 2 - bb.x, oy = headH + pad / 2 - bb.y;
+  const dateTxt = meta.date ? new Date(meta.date + 'T12:00:00').toLocaleDateString('fr-FR') : '';
+  let legend = '';
+  const ly0 = headH + bb.height + pad + 4;
+  if (rows.length) {
+    legend += `<line x1="${pad}" x2="${W - pad}" y1="${ly0 - 6}" y2="${ly0 - 6}" stroke="#e2e2dc"/>`;
+    rows.forEach((r, ri) => r.forEach((i) => {
+      const y = ly0 + 14 + ri * 24;
+      legend += `<g transform="translate(${pad + i.x + 10},${y})">${legendIcon(i)}</g><text x="${pad + i.x + (i.k === 'txt' ? 44 : 26)}" y="${y + 4}" font-size="11.5" fill="#222">${esc(i.t)}</text>`;
+    }));
+  }
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Ht}" viewBox="0 0 ${W} ${Ht}" font-family="${FONT}">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="${pad}" y="32" font-size="18" font-weight="700" fill="#111">${esc(meta.title || 'Arbre généalogique')}</text>
+${meta.indication ? `<text x="${pad}" y="52" font-size="12" fill="#444">Indication : ${esc(meta.indication)}</text>` : ''}
+<text x="${W - pad}" y="30" text-anchor="end" font-size="11" fill="#555">${esc([dateTxt, meta.author].filter(Boolean).join(' · '))}</text>
+${ui.anon ? `<text x="${W - pad}" y="46" text-anchor="end" font-size="10.5" font-weight="700" fill="#b4572a">ANONYMISÉ</text>` : ''}
+<line x1="${pad}" x2="${W - pad}" y1="${headH - 8}" y2="${headH - 8}" stroke="#e2e2dc"/>
+<g transform="translate(${r1(ox)},${r1(oy)})">${body}</g>
+${legend}
+<text x="${pad}" y="${Ht - 10}" font-size="9" fill="#999">PedigreeFes · nomenclature NSGC (Bennett et al., 2022)</text>
+</svg>`;
+  return { svg: svgStr, W, H: Ht };
+}
+const slug = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+const fname = (ext) => `${slug(doc.meta.title) || 'arbre'}${ui.anon ? '-anonyme' : ''}-${today()}.${ext}`;
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function exportSvgFile() { download(new Blob([exportSvg().svg], { type: 'image/svg+xml' }), fname('svg')); }
+function exportPng() {
+  const { svg: s, W, H: Ht } = exportSvg();
+  const img = new Image(), sc = 3;
+  const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = W * sc; c.height = Ht * sc;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    c.toBlob((b) => download(b, fname('png')), 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('Échec de l’export PNG'); };
+  img.src = url;
+}
+function doPrint() {
+  $('printArea').innerHTML = exportSvg().svg;
+  setTimeout(() => window.print(), 30);
+}
+function saveJson() {
+  download(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }), `${slug(doc.meta.title) || 'arbre'}-${today()}.pedigree.json`);
+  toast('Fichier enregistré');
+}
+function openJson(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!d || typeof d.people !== 'object' || typeof d.unions !== 'object') throw new Error('format');
+      commit(() => { doc = Object.assign(blankDoc(), d); doc.meta = Object.assign(blankDoc().meta, d.meta || {}); ui.sel.clear(); ui.selU = null; ui.hl.clear(); });
+      requestAnimationFrame(fit);
+      toast('Arbre ouvert : ' + (doc.meta.title || file.name));
+    } catch (e) { toast('Fichier non reconnu (JSON PedigreeFes attendu)'); }
+  };
+  rd.readAsText(file);
+}
+
+/* ═════════════ Modèles « Nouveau » ═════════════ */
+const TEMPLATES = [
+  ['solo', 'Proposant(e) seul(e)', 'Un symbole, on construit autour.'],
+  ['trio', 'Trio', 'Parents + proposant(e).'],
+  ['gp', 'Trois générations', 'Grands-parents, parents, proposant(e).'],
+  ['cousins', 'Couple de cousins germains', 'Union consanguine (F = 1/16) préremplie.'],
+];
+function tplPreview(k) {
+  const sq = (x, y, f = '#fff') => `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="${f}" stroke="#1d1d1b" stroke-width="1.4"/>`;
+  const ci = (x, y, f = '#fff') => `<circle cx="${x}" cy="${y}" r="6" fill="${f}" stroke="#1d1d1b" stroke-width="1.4"/>`;
+  const ln = (d) => `<path d="${d}" stroke="#1d1d1b" stroke-width="1.3" fill="none"/>`;
+  const arrow = (x, y) => `<path d="M${x - 14},${y + 12}L${x - 7},${y + 5}" stroke="#1d1d1b" stroke-width="1.3"/>`;
+  const v = {
+    solo: ci(100, 37) + arrow(100, 37),
+    trio: sq(85, 22) + ci(115, 22) + ln('M91,22H109M100,22V40M100,40V46') + ci(100, 52) + arrow(100, 52),
+    gp: sq(40, 12) + ci(70, 12) + sq(130, 12) + ci(160, 12) + ln('M46,12H64M55,12V30M136,12H154M145,12V30') + ln('M55,30H85V36M145,30H115V36') + sq(85, 42) + ci(115, 42) + ln('M91,42H109M100,42V56M100,56V58') + ci(100, 64) + arrow(100, 64),
+    cousins: sq(85, 9) + ci(115, 9) + ln('M91,9H109M100,9V18M60,18H140M60,18V22M140,18V22') + ci(40, 28) + sq(60, 28) + ci(140, 28) + sq(160, 28) + ln('M46,28H54M146,28H154M50,28V40H85V44M150,28V40H115V44') + sq(85, 50) + ci(115, 50) + ln('M91,48H109M91,52H109M100,50V60') + ci(100, 66) + arrow(100, 66),
+  };
+  return `<svg viewBox="0 0 200 76">${v[k]}</svg>`;
+}
+let tplSel = 'trio', tplSex = 'F';
+function openNew() {
+  $('tpls').innerHTML = TEMPLATES.map(([k, t, d]) => `<button class="tpl${k === tplSel ? ' on' : ''}" data-tpl="${k}">${tplPreview(k)}<b>${t}</b><span>${d}</span></button>`).join('');
+  $('dlgNew').showModal();
+}
+$('tpls').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tpl]');
+  if (!b) return;
+  tplSel = b.dataset.tpl;
+  $('tpls').querySelectorAll('.tpl').forEach((x) => x.classList.toggle('on', x === b));
+});
+$('tpls').addEventListener('dblclick', (e) => { if (e.target.closest('[data-tpl]')) $('newGo').click(); });
+$('newSex').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  tplSex = b.dataset.v;
+  $('newSex').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+});
+function buildTemplate(k, sex) {
+  doc = blankDoc();
+  const pp = (o) => newPerson(o);
+  if (k === 'solo') pp({ sex, proband: true, x: 0, gen: 0 });
+  else if (k === 'trio') {
+    const f = pp({ sex: 'M', x: -40, gen: 0 }), m = pp({ sex: 'F', x: 40, gen: 0 });
+    const u = newUnion(f.id, m.id);
+    pp({ sex, x: 0, gen: 1, pu: u.id, proband: true });
+  } else if (k === 'gp') {
+    const a = pp({ sex: 'M', x: -160, gen: 0 }), b = pp({ sex: 'F', x: -80, gen: 0 });
+    const c = pp({ sex: 'M', x: 80, gen: 0 }), d = pp({ sex: 'F', x: 160, gen: 0 });
+    const u1 = newUnion(a.id, b.id), u2 = newUnion(c.id, d.id);
+    const f = pp({ sex: 'M', x: -40, gen: 1, pu: u1.id }), m = pp({ sex: 'F', x: 40, gen: 1, pu: u2.id });
+    const u = newUnion(f.id, m.id);
+    pp({ sex, x: 0, gen: 2, pu: u.id, proband: true });
+  } else if (k === 'cousins') {
+    const g1 = pp({ sex: 'M', x: -40, gen: 0 }), g2 = pp({ sex: 'F', x: 40, gen: 0 });
+    const u0 = newUnion(g1.id, g2.id);
+    const w = pp({ sex: 'F', x: -200, gen: 1 }), s = pp({ sex: 'M', x: -120, gen: 1, pu: u0.id });
+    const dd = pp({ sex: 'F', x: 120, gen: 1, pu: u0.id }), h = pp({ sex: 'M', x: 200, gen: 1 });
+    const u1 = newUnion(w.id, s.id), u2 = newUnion(dd.id, h.id);
+    const c1 = pp({ sex: 'M', x: -40, gen: 2, pu: u1.id }), c2 = pp({ sex: 'F', x: 40, gen: 2, pu: u2.id });
+    const u3 = newUnion(c1.id, c2.id, { label: 'cousins germains' });
+    pp({ sex, x: 0, gen: 3, pu: u3.id, proband: true });
+  }
+}
+$('newGo').addEventListener('click', () => {
+  $('dlgNew').close();
+  commit(() => { buildTemplate(tplSel, tplSex); ui.sel.clear(); ui.selU = null; ui.hl.clear(); ui.calc.f = ''; });
+  requestAnimationFrame(fit);
+});
+document.querySelectorAll('[data-close-dlg]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
+
+/* Aide : tableau de notation */
+function buildNotation() {
+  const ex = (o, extra = '') => { const p = Object.assign({ sex: 'M', kind: 'person', aff: {}, adopt: '', carrier: '' }, o); return `<svg viewBox="-34 -27 68 54">${extra}${shapeSvg(p, `fill="${o.fill || '#fff'}" stroke="${INK}" stroke-width="2"`)}${o.in || ''}</svg>`; };
+  const rows = [
+    [ex({ sex: 'M' }), 'Homme'], [ex({ sex: 'F' }), 'Femme'], [ex({ sex: 'U' }), 'Sexe inconnu'],
+    [ex({ sex: 'M', fill: INK }), 'Atteint'],
+    [ex({ sex: 'F', in: `<circle r="4.6" fill="${INK}"/>` }), 'Porteur hétérozygote'],
+    [ex({ sex: 'F', in: `<line x1="0" y1="-20" x2="0" y2="20" stroke="${INK}" stroke-width="2.6"/>` }), 'Porteur présymptomatique'],
+    [ex({ sex: 'M', in: `<line x1="-26" y1="26" x2="26" y2="-26" stroke="${INK}" stroke-width="2"/>` }), 'Décédé(e)'],
+    [ex({ sex: 'U', in: `<text y="6" text-anchor="middle" font-family="Arial" font-weight="700" font-size="17" fill="${INK}">P</text>` }), 'Grossesse en cours'],
+    [ex({ kind: 'sab' }), 'Fausse couche spontanée (FCS)'],
+    [ex({ kind: 'top', in: `<line x1="-21" y1="21" x2="21" y2="-21" stroke="${INK}" stroke-width="2"/>` }), 'IMG / IVG'],
+    [`<svg viewBox="-34 -27 68 54"><path d="M-30,-3H30M-30,3H30" stroke="${INK}" stroke-width="2"/></svg>`, 'Union consanguine (automatique si apparentés)'],
+    [`<svg viewBox="-34 -27 68 54"><path d="M-30,0H30" stroke="${INK}" stroke-width="2"/><path d="M-12,8L-4,-8M-5,8L3,-8" stroke="${INK}" stroke-width="2"/></svg>`, 'Séparés / divorcés'],
+    [`<svg viewBox="-34 -27 68 54"><path d="M0,-24L-18,20M0,-24L18,20M-9,-2H9" stroke="${INK}" stroke-width="2" fill="none"/></svg>`, 'Jumeaux monozygotes (sans barre : dizygotes)'],
+    [ex({ sex: 'M', in: `<path d="M-20,-26H-26V26H-20M20,-26H26V26H20" fill="none" stroke="${INK}" stroke-width="2"/>` }), 'Adopté(e)'],
+    [`<svg viewBox="-34 -27 68 54"><path d="M-30,22L-14,6" stroke="${INK}" stroke-width="2"/><polygon points="-10,2 -18,6 -14,10" fill="${INK}"/><text x="-26" y="-6" font-family="Arial" font-weight="700" font-size="14" fill="${INK}">P</text><rect x="-4" y="-18" width="26" height="26" fill="#fff" stroke="${INK}" stroke-width="2"/></svg>`, 'Proposant(e) (sans P : consultant)'],
+    [`<svg viewBox="-34 -27 68 54"><rect x="-13" y="-24" width="26" height="26" fill="#fff" stroke="${INK}" stroke-width="2"/><path d="M0,2V14M-11,14H11M-11,19H11" stroke="${INK}" stroke-width="2"/></svg>`, 'Infertilité (un trait : sans enfant)'],
+  ];
+  $('notation').innerHTML = rows.map(([s, t]) => `${s}<span>${t}</span>`).join('');
+}
+
+/* ═════════════ Barre d'outils ═════════════ */
+function showPanel(which) {
+  if (!matchMedia('(max-width: 960px)').matches) return;
+  $(which).classList.add('open');
+}
+document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => $(b.dataset.close).classList.remove('open')));
+$('tglLeft').addEventListener('click', () => $('left').classList.toggle('open'));
+$('tglRight').addEventListener('click', () => $('right').classList.toggle('open'));
+$('bNew').addEventListener('click', openNew);
+$('bOpen').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', (e) => { if (e.target.files[0]) openJson(e.target.files[0]); e.target.value = ''; });
+$('bSave').addEventListener('click', saveJson);
+$('bExport').addEventListener('click', (e) => {
+  if (ctx.children.length) { hideCtx(); return; }
+  const r = e.currentTarget.getBoundingClientRect();
+  showMenu([
+    { head: ui.anon ? 'Export anonymisé' : 'Export' },
+    { label: 'Image PNG (haute définition)', act: exportPng },
+    { label: 'Image vectorielle SVG', act: exportSvgFile },
+    { label: 'Imprimer / PDF', kbd: 'Ctrl+P', act: doPrint },
+    { sep: 1 },
+    { label: 'Fichier de l’arbre (.json)', kbd: 'Ctrl+S', act: saveJson },
+    { sep: 1 },
+    { label: 'Mode anonyme', checked: ui.anon, act: toggleAnon },
+  ], r.left, r.bottom + 4);
+});
+$('bUndo').addEventListener('click', undo);
+$('bRedo').addEventListener('click', redo);
+$('bLayout').addEventListener('click', organise);
+function toggleAnon() {
+  ui.anon = !ui.anon;
+  $('bAnon').classList.toggle('on', ui.anon);
+  $('stage').classList.toggle('anon', ui.anon);
+  savePrefs();
+  render(); renderPanel();
+  toast(ui.anon ? 'Mode anonyme : noms, années de naissance et notes masqués' : 'Mode anonyme désactivé');
+}
+$('bAnon').addEventListener('click', toggleAnon);
+$('bHelp').addEventListener('click', () => $('dlgHelp').showModal());
+$('moreHelp').addEventListener('click', () => $('dlgHelp').showModal());
+$('bTheme').addEventListener('click', () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === 'dark'
+    : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  savePrefs();
+});
+$('docTitle').addEventListener('input', (e) => {
+  liveEdit(() => { doc.meta.title = e.target.value; });
+  const i = panel.querySelector('[data-m="title"]');
+  if (i) i.value = e.target.value;
+});
+$('docTitle').addEventListener('blur', () => { editing = false; });
+$('docTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+$('optIds').addEventListener('change', (e) => { ui.ids = e.target.checked; savePrefs(); render(); });
+$('optGuides').addEventListener('change', (e) => { ui.guides = e.target.checked; savePrefs(); render(); });
+$('zIn').addEventListener('click', () => zoomAt(1.25));
+$('zOut').addEventListener('click', () => zoomAt(0.8));
+$('zFit').addEventListener('click', fit);
+$('pickCancel').addEventListener('click', endPick);
+$('hintClose').addEventListener('click', () => { $('hint').hidden = true; prefs.hint = 1; savePrefs(); });
+
+/* ═════════════ Clavier ═════════════ */
+document.addEventListener('keydown', (e) => {
+  const t = e.target, typing = /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable;
+  const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
+  if (document.querySelector('dialog[open]')) return;
+  if (mod && key === 's') { e.preventDefault(); saveJson(); return; }
+  if (mod && key === 'p') { e.preventDefault(); doPrint(); return; }
+  if (mod && key === 'o') { e.preventDefault(); $('file').click(); return; }
+  if (typing) { if (e.key === 'Escape') t.blur(); return; }
+  if (e.key === 'Escape') {
+    if (ctx.children.length) hideCtx();
+    else if (ui.pick) endPick();
+    else { ui.sel.clear(); ui.selU = null; ui.hl.clear(); render(); renderPanel(); }
+    return;
+  }
+  if (mod) {
+    if (key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+    else if (key === 'y') { e.preventDefault(); redo(); }
+    else if (key === 'c') { if (copySel()) toast(`${ui.clip.ps.length} copié(s)`); }
+    else if (key === 'v') { e.preventDefault(); paste(); }
+    else if (key === 'd') { e.preventDefault(); if (copySel()) paste(); }
+    else if (key === 'a') { e.preventDefault(); selectAll(); }
+    return;
+  }
+  if (e.altKey) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    if (ui.sel.size) opDelete([...ui.sel], false);
+    else if (ui.selU) opDeleteUnion(doc.unions[ui.selU]);
+    return;
+  }
+  if (e.key.startsWith('Arrow') && ui.sel.size) {
+    e.preventDefault();
+    const st = e.shiftKey ? SNAP * 5 : SNAP;
+    commit(() => targets().forEach((p) => {
+      if (e.key === 'ArrowLeft') p.x -= st;
+      if (e.key === 'ArrowRight') p.x += st;
+      if (e.key === 'ArrowUp') p.gen -= 1;
+      if (e.key === 'ArrowDown') p.gen += 1;
+    }));
+    return;
+  }
+  if (e.key === '?') { $('dlgHelp').showModal(); return; }
+  if (key === 'o') { organise(); return; }
+  if (key === '0') { fit(); return; }
+  if (key === '+' || key === '=') { zoomAt(1.25); return; }
+  if (key === '-') { zoomAt(0.8); return; }
+  const one = selPerson();
+  if (ui.sel.size) {
+    if (key === 'a') { togglePheno(doc.phenos[0].id); return; }
+    if (key === 'h') { toggleCarrier('carrier'); return; }
+    if (key === 'm') { toggleDead(); return; }
+  }
+  if (!one) return;
+  const acts = {
+    p: () => opAddParents(one), c: () => opAddPartner(one), g: () => opAddChild(one, { sex: 'M' }), f: () => opAddChild(one, { sex: 'F' }),
+    r: () => opAddSibling(one, { sex: 'M' }), s: () => opAddSibling(one, { sex: 'F' }), x: () => toggleProband(one),
+  };
+  if (acts[key]) { e.preventDefault(); acts[key](); }
+});
+
+/* ═════════════ Démarrage ═════════════ */
+(function init() {
+  if (prefs.theme) document.documentElement.dataset.theme = prefs.theme;
+  ui.ids = prefs.ids !== false; ui.guides = prefs.guides !== false; ui.anon = !!prefs.anon;
+  $('optIds').checked = ui.ids; $('optGuides').checked = ui.guides;
+  $('bAnon').classList.toggle('on', ui.anon);
+  $('stage').classList.toggle('anon', ui.anon);
+  let restored = false;
+  try {
+    const s = localStorage.getItem(STORE);
+    if (s) {
+      const d = JSON.parse(s);
+      if (d && d.people && d.unions) { doc = Object.assign(blankDoc(), d); restored = true; }
+    }
+  } catch (e) { /* rien */ }
+  if (!restored) buildTemplate('trio', 'F');
+  cleanup();
+  buildNotation();
+  render();
+  renderPanel();
+  updUndo();
+  requestAnimationFrame(fit);
+  if (!prefs.hint) $('hint').hidden = false;
+  window.addEventListener('beforeprint', () => { if (!$('printArea').innerHTML) $('printArea').innerHTML = exportSvg().svg; });
+  window.addEventListener('afterprint', () => { $('printArea').innerHTML = ''; });
+  window.PedigreeFes = { get doc() { return doc; }, phi, Fof, organise, kinPaths, exportSvg, buildTemplate: (k, s) => commit(() => buildTemplate(k, s)) };
+})();
+})();
+</script>
+</body>
+</html>
